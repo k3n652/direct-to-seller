@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
-// 1. Add the analytics import here
-import { getAnalytics, isSupported } from "firebase/analytics"; 
 
+// Replace these with your own Firebase project values (Project Settings > Your apps)
 const firebaseConfig = {
-  apiKey: "AIzaSydcoyWu6Sq5_6v8G4j_pdiMyny4GiYIE8Q",
+  apiKey: "AIzaSyDcoyWu6Sq5_6v8G4j_pdiMyny4GiYIE8Q",
   authDomain: "direct-to-seller.firebaseapp.com",
   projectId: "direct-to-seller",
   storageBucket: "direct-to-seller.firebasestorage.app",
@@ -16,14 +15,6 @@ const firebaseConfig = {
 
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
-
-// 2. Initialize analytics safely only inside the browser
-let analytics;
-if (typeof window !== "undefined") {
-  isSupported().then((supported) => {
-    if (supported) analytics = getAnalytics(fbApp);
-  });
-}
 
 const PAL = {
   bg: "#FFFFFF",
@@ -150,9 +141,19 @@ export default function App() {
   useEffect(() => {
     document.body.style.margin = "0";
     document.body.style.background = PAL.bg;
-    Promise.all([loadShared(DEALS_KEY), loadShared(BUYERS_KEY)]).then(([d, b]) => {
-      setDeals(d); setBuyers(b); setLoading(false);
+
+    const dealsQuery = query(collection(db, "deals"), orderBy("createdAt", "desc"));
+    const unsubDeals = onSnapshot(dealsQuery, (snap) => {
+      setDeals(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setLoading(false);
     });
+
+    const buyersQuery = query(collection(db, "buyers"), orderBy("createdAt", "desc"));
+    const unsubBuyers = onSnapshot(buyersQuery, (snap) => {
+      setBuyers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+
+    return () => { unsubDeals(); unsubBuyers(); };
   }, []);
 
   const setDF = (k) => (e) => setDealForm((p) => ({ ...p, [k]: e.target.value }));
@@ -163,10 +164,9 @@ export default function App() {
 
   const submitDeal = async () => {
     if (!dealForm.address || !dealForm.price) return;
-    const deal = { id: Date.now(), ...dealForm, postedDate: new Date().toLocaleDateString(), verified: false };
-    const updated = [deal, ...deals];
-    setDeals(updated);
-    await saveShared(DEALS_KEY, updated);
+    await addDoc(collection(db, "deals"), {
+      ...dealForm, postedDate: new Date().toLocaleDateString(), verified: false, createdAt: Date.now(),
+    });
     setDealForm(EMPTY_DEAL);
     setPosted(true);
     setTimeout(() => setPosted(false), 2500);
@@ -174,10 +174,9 @@ export default function App() {
 
   const submitBuyer = async () => {
     if (!buyerForm.name || !buyerForm.markets) return;
-    const buyer = { id: Date.now(), ...buyerForm, postedDate: new Date().toLocaleDateString() };
-    const updated = [buyer, ...buyers];
-    setBuyers(updated);
-    await saveShared(BUYERS_KEY, updated);
+    await addDoc(collection(db, "buyers"), {
+      ...buyerForm, postedDate: new Date().toLocaleDateString(), createdAt: Date.now(),
+    });
     setBuyerForm(EMPTY_BUYER);
     setProfileSaved(true);
     setTimeout(() => setProfileSaved(false), 2500);
