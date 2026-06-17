@@ -1,4 +1,29 @@
 import { useState, useEffect } from "react";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
+// 1. Add the analytics import here
+import { getAnalytics, isSupported } from "firebase/analytics"; 
+
+const firebaseConfig = {
+  apiKey: "AIzaSydcoyWu6Sq5_6v8G4j_pdiMyny4GiYIE8Q",
+  authDomain: "direct-to-seller.firebaseapp.com",
+  projectId: "direct-to-seller",
+  storageBucket: "direct-to-seller.firebasestorage.app",
+  messagingSenderId: "366400953836",
+  appId: "1:366400953836:web:f7277877d7a58c3d95b4c9",
+  measurementId: "G-55JR8KG1HF"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+
+// 2. Initialize analytics safely only inside the browser
+let analytics;
+if (typeof window !== "undefined") {
+  isSupported().then((supported) => {
+    if (supported) analytics = getAnalytics(fbApp);
+  });
+}
 
 const PAL = {
   bg: "#FFFFFF",
@@ -19,17 +44,6 @@ const SERIF = "'Iowan Old Style', 'Source Serif Pro', Georgia, 'Times New Roman'
 const SANS = "'Inter', -apple-system, system-ui, sans-serif";
 
 const fmt = (n) => !n || isNaN(n) ? "—" : "$" + Number(n).toLocaleString("en-US", { maximumFractionDigits: 0 });
-
-const DEALS_KEY = "dts-deals-v1";
-const BUYERS_KEY = "dts-buyers-v1";
-
-async function loadShared(key) {
-  try { const r = await window.storage.get(key, true); return r ? JSON.parse(r.value) : []; }
-  catch { return []; }
-}
-async function saveShared(key, val) {
-  try { await window.storage.set(key, JSON.stringify(val), true); } catch (e) { console.error(e); }
-}
 
 const PROPERTY_TYPES = ["Single Family", "Multifamily", "Land", "Townhome/Condo", "Mixed Use"];
 
