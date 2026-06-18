@@ -30,14 +30,14 @@ const PAL = {
   brick: "#9C3B33",
   brickTint: "#F6EAE8",
 };
-
+ 
 const SERIF = "'Iowan Old Style', 'Source Serif Pro', Georgia, 'Times New Roman', serif";
 const SANS = "'Inter', -apple-system, system-ui, sans-serif";
-
+ 
 const fmt = (n) => !n || isNaN(n) ? "—" : "$" + Number(n).toLocaleString("en-US", { maximumFractionDigits: 0 });
-
+ 
 const PROPERTY_TYPES = ["Single Family", "Multifamily", "Land", "Townhome/Condo", "Mixed Use"];
-
+ 
 /* ---------- Signature element: verification seal ---------- */
 function Seal({ size = 40, status = "pending", color }) {
   const c = color || (status === "verified" ? PAL.emerald : PAL.gold);
@@ -56,7 +56,7 @@ function Seal({ size = 40, status = "pending", color }) {
     </svg>
   );
 }
-
+ 
 /* ---------- Shared field components (outside App to avoid remount bugs) ---------- */
 const inputBase = {
   background: "#fff", border: `1px solid ${PAL.paperBorder}`, borderRadius: 7,
@@ -67,7 +67,7 @@ const labelBase = {
   color: PAL.muted, fontSize: 11, fontWeight: 700, letterSpacing: "0.07em",
   textTransform: "uppercase", marginBottom: 6, display: "block", fontFamily: SANS,
 };
-
+ 
 function Field({ label, value, onChange, placeholder, prefix, type = "text", textarea }) {
   return (
     <div>
@@ -85,7 +85,7 @@ function Field({ label, value, onChange, placeholder, prefix, type = "text", tex
     </div>
   );
 }
-
+ 
 function Select({ label, value, onChange, options }) {
   return (
     <div>
@@ -96,7 +96,7 @@ function Select({ label, value, onChange, options }) {
     </div>
   );
 }
-
+ 
 function Btn({ onClick, children, primary, disabled, style = {} }) {
   return (
     <button onClick={onClick} disabled={disabled} style={{
@@ -108,7 +108,7 @@ function Btn({ onClick, children, primary, disabled, style = {} }) {
     }}>{children}</button>
   );
 }
-
+ 
 function matchCount(deal, buyers) {
   return buyers.filter((b) => {
     const markets = (b.markets || "").toLowerCase().split(",").map((m) => m.trim()).filter(Boolean);
@@ -122,10 +122,10 @@ function matchCount(deal, buyers) {
     return hit && priceOk && typeOk;
   }).length;
 }
-
-const EMPTY_DEAL = { address: "", city: "", state: "", zip: "", price: "", arv: "", repairs: "", propertyType: PROPERTY_TYPES[0], description: "", contact: "" };
+ 
+const EMPTY_DEAL = { wholesalerName: "", address: "", city: "", state: "", zip: "", price: "", arv: "", repairs: "", propertyType: PROPERTY_TYPES[0], description: "", contact: "" };
 const EMPTY_BUYER = { name: "", markets: "", maxPrice: "", propertyTypes: [], contact: "" };
-
+ 
 export default function App() {
   const [tab, setTab] = useState("browse");
   const [deals, setDeals] = useState([]);
@@ -137,33 +137,33 @@ export default function App() {
   const [profileSaved, setProfileSaved] = useState(false);
   const [filters, setFilters] = useState({ state: "", maxPrice: "", propertyType: "All" });
   const [revealedContact, setRevealedContact] = useState(null);
-
+ 
   useEffect(() => {
     document.body.style.margin = "0";
     document.body.style.background = PAL.bg;
-
+ 
     const dealsQuery = query(collection(db, "deals"), orderBy("createdAt", "desc"));
     const unsubDeals = onSnapshot(dealsQuery, (snap) => {
       setDeals(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setLoading(false);
     });
-
+ 
     const buyersQuery = query(collection(db, "buyers"), orderBy("createdAt", "desc"));
     const unsubBuyers = onSnapshot(buyersQuery, (snap) => {
       setBuyers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
-
+ 
     return () => { unsubDeals(); unsubBuyers(); };
   }, []);
-
+ 
   const setDF = (k) => (e) => setDealForm((p) => ({ ...p, [k]: e.target.value }));
   const setBF = (k) => (e) => setBuyerForm((p) => ({ ...p, [k]: e.target.value }));
   const togglePropType = (t) => setBuyerForm((p) => ({
     ...p, propertyTypes: p.propertyTypes.includes(t) ? p.propertyTypes.filter((x) => x !== t) : [...p.propertyTypes, t],
   }));
-
+ 
   const submitDeal = async () => {
-    if (!dealForm.address || !dealForm.price) return;
+    if (!dealForm.wholesalerName || !dealForm.address || !dealForm.price) return;
     await addDoc(collection(db, "deals"), {
       ...dealForm, postedDate: new Date().toLocaleDateString(), verified: false, createdAt: Date.now(),
     });
@@ -171,7 +171,7 @@ export default function App() {
     setPosted(true);
     setTimeout(() => setPosted(false), 2500);
   };
-
+ 
   const submitBuyer = async () => {
     if (!buyerForm.name || !buyerForm.markets) return;
     await addDoc(collection(db, "buyers"), {
@@ -181,14 +181,14 @@ export default function App() {
     setProfileSaved(true);
     setTimeout(() => setProfileSaved(false), 2500);
   };
-
+ 
   const filteredDeals = deals.filter((d) => {
     const stateOk = !filters.state || (d.state || "").toLowerCase().includes(filters.state.toLowerCase());
     const priceOk = !filters.maxPrice || Number(d.price) <= Number(filters.maxPrice);
     const typeOk = filters.propertyType === "All" || d.propertyType === filters.propertyType;
     return stateOk && priceOk && typeOk;
   });
-
+ 
   const TabBtn = ({ id, label }) => (
     <button onClick={() => setTab(id)} style={{
       padding: "10px 18px", border: "none", background: "none", cursor: "pointer",
@@ -197,11 +197,11 @@ export default function App() {
       fontWeight: 700, fontSize: 14, fontFamily: SANS, transition: "all 0.15s",
     }}>{label}</button>
   );
-
+ 
   return (
     <div style={{ background: PAL.bg, minHeight: "100vh", fontFamily: SANS, color: PAL.ink }}>
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "36px 20px 60px" }}>
-
+ 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 8 }}>
           <Seal size={44} status="verified" />
@@ -214,14 +214,14 @@ export default function App() {
         <div style={{ color: PAL.muted, fontSize: 14.5, marginBottom: 28, maxWidth: 480, lineHeight: 1.5 }}>
           Off-market deals and cash buyers, without the Facebook noise. No daisy chains, no bots, no guessing on the numbers.
         </div>
-
+ 
         {/* Tabs */}
         <div style={{ display: "flex", gap: 4, borderBottom: `1px solid ${PAL.paperBorder}`, marginBottom: 28 }}>
           <TabBtn id="browse" label={`Browse Deals (${deals.length})`} />
           <TabBtn id="post" label="Post a Deal" />
           <TabBtn id="buybox" label="My Buy Box" />
         </div>
-
+ 
         {/* BROWSE */}
         {tab === "browse" && (
           <div>
@@ -230,7 +230,7 @@ export default function App() {
               <Field label="Max Price" value={filters.maxPrice} onChange={(e) => setFilters((p) => ({ ...p, maxPrice: e.target.value }))} placeholder="e.g. 150000" prefix="$" />
               <Select label="Property Type" value={filters.propertyType} onChange={(e) => setFilters((p) => ({ ...p, propertyType: e.target.value }))} options={["All", ...PROPERTY_TYPES]} />
             </div>
-
+ 
             {loading ? (
               <div style={{ color: PAL.muted, textAlign: "center", padding: 50 }}>Loading deals…</div>
             ) : filteredDeals.length === 0 ? (
@@ -248,6 +248,7 @@ export default function App() {
                         <div>
                           <div style={{ fontFamily: SERIF, fontWeight: 700, fontSize: 17, marginBottom: 2 }}>{d.address}</div>
                           <div style={{ color: PAL.muted, fontSize: 12.5 }}>{[d.city, d.state, d.zip].filter(Boolean).join(", ")} · {d.propertyType}</div>
+                          <div style={{ color: PAL.emeraldDark, fontSize: 12, fontWeight: 600, marginTop: 3 }}>Posted by {d.wholesalerName || "Unknown"}</div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, background: d.verified ? PAL.emeraldTint : PAL.goldTint, padding: "4px 10px", borderRadius: 20 }}>
                           <Seal size={16} status={d.verified ? "verified" : "pending"} />
@@ -256,7 +257,7 @@ export default function App() {
                           </span>
                         </div>
                       </div>
-
+ 
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
                         {[["Price", fmt(d.price)], ["ARV", fmt(d.arv)], ["Repairs", fmt(d.repairs)], ["Est. Margin", fmt(margin)]].map(([l, v]) => (
                           <div key={l} style={{ background: "#fff", border: `1px solid ${PAL.paperBorder}`, borderRadius: 7, padding: "8px 10px" }}>
@@ -265,9 +266,9 @@ export default function App() {
                           </div>
                         ))}
                       </div>
-
+ 
                       {d.description && <div style={{ fontSize: 13.5, color: PAL.ink, marginBottom: 12, lineHeight: 1.5 }}>{d.description}</div>}
-
+ 
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div style={{ fontSize: 12, color: PAL.emeraldDark, fontWeight: 700 }}>
                           {matches > 0 ? `${matches} buyer${matches > 1 ? "s" : ""} in your network match this` : "Posted " + d.postedDate}
@@ -289,11 +290,12 @@ export default function App() {
             )}
           </div>
         )}
-
+ 
         {/* POST A DEAL */}
         {tab === "post" && (
           <div>
             <div style={{ display: "grid", gap: 14, marginBottom: 20 }}>
+              <Field label="Your Name" value={dealForm.wholesalerName} onChange={setDF("wholesalerName")} placeholder="Jane Smith" />
               <Field label="Property Address" value={dealForm.address} onChange={setDF("address")} placeholder="123 Main St" />
               <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10 }}>
                 <Field label="City" value={dealForm.city} onChange={setDF("city")} placeholder="Atlanta" />
@@ -312,12 +314,12 @@ export default function App() {
             <div style={{ background: PAL.goldTint, border: `1px solid ${PAL.gold}33`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12.5, color: PAL.gold, fontWeight: 600 }}>
               Deals are reviewed manually before being marked "Verified." Yours will show as Pending until then.
             </div>
-            <Btn primary disabled={!dealForm.address || !dealForm.price} onClick={submitDeal} style={{ width: "100%", padding: "13px 0" }}>
+            <Btn primary disabled={!dealForm.wholesalerName || !dealForm.address || !dealForm.price} onClick={submitDeal} style={{ width: "100%", padding: "13px 0" }}>
               {posted ? "✓ Deal Posted" : "Post Deal"}
             </Btn>
           </div>
         )}
-
+ 
         {/* BUY BOX */}
         {tab === "buybox" && (
           <div>
@@ -346,7 +348,7 @@ export default function App() {
             <Btn primary disabled={!buyerForm.name || !buyerForm.markets} onClick={submitBuyer} style={{ width: "100%", padding: "13px 0" }}>
               {profileSaved ? "✓ Buy Box Saved" : "Save Buy Box"}
             </Btn>
-
+ 
             {buyers.length > 0 && (
               <div style={{ marginTop: 28 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: PAL.muted, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>
