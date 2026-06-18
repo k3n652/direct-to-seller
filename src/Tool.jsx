@@ -1,6 +1,15 @@
 import { useState, useEffect } from "react";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc } from "firebase/firestore";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc, where } from "firebase/firestore";
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signOut, 
+  onAuthStateChanged 
+} from "firebase/auth";
 
 // Replace these with your own Firebase project values (Project Settings > Your apps)
 const firebaseConfig = {
@@ -15,6 +24,8 @@ const firebaseConfig = {
 
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
+const googleProvider = new GoogleAuthProvider();
 
 const PAL = {
   bg: "#FFFFFF",
@@ -57,7 +68,7 @@ function Seal({ size = 40, status = "pending", color }) {
   );
 }
  
-/* ---------- Shared field components (outside App to avoid remount bugs) ---------- */
+/* ---------- Shared field components ---------- */
 const inputBase = {
   background: "#fff", border: `1px solid ${PAL.paperBorder}`, borderRadius: 7,
   color: PAL.ink, fontSize: 14.5, padding: "10px 12px", width: "100%",
@@ -127,6 +138,13 @@ const EMPTY_DEAL = { wholesalerName: "", address: "", city: "", state: "", zip: 
 const EMPTY_BUYER = { name: "", markets: "", maxPrice: "", propertyTypes: [], contact: "" };
  
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authMode, setAuthMode] = useState("login"); // 'login' or 'signup'
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+
   const [tab, setTab] = useState("browse");
   const [deals, setDeals] = useState([]);
   const [buyers, setBuyers] = useState([]);
@@ -138,11 +156,22 @@ export default function App() {
   const [filters, setFilters] = useState({ state: "", maxPrice: "", propertyType: "All" });
   const [revealedContact, setRevealedContact] = useState(null);
   
-  // Admin Backdoor Access States
   const [isAdmin, setIsAdmin] = useState(false);
   const [passInput, setPassInput] = useState("");
 
+  // Handle Authentication Status Changes
   useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+    });
+    return () => unsubAuth();
+  }, []);
+
+  // Sync Global Deals Feed & User Specific Buy Box Data
+  useEffect(() => {
+    if (!user) return;
+
     document.body.style.margin = "0";
     document.body.style.background = PAL.bg;
  
@@ -152,13 +181,18 @@ export default function App() {
       setLoading(false);
     });
  
-    const buyersQuery = query(collection(db, "buyers"), orderBy("createdAt", "desc"));
+    // ONLY fetch buy boxes belonging to this specific logged-in user ID
+    const buyersQuery = query(
+      collection(db, "buyers"), 
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc")
+    );
     const unsubBuyers = onSnapshot(buyersQuery, (snap) => {
       setBuyers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
  
     return () => { unsubDeals(); unsubBuyers(); };
-  }, []);
+  }, [user]);
  
   const setDF = (k) => (e) => setDealForm((p) => ({ ...p, [k]: e.target.value }));
   const setBF = (k) => (e) => setBuyerForm((p) => ({ ...p, [k]: e.target.value }));
@@ -169,7 +203,11 @@ export default function App() {
   const submitDeal = async () => {
     if (!dealForm.wholesalerName || !dealForm.address || !dealForm.price) return;
     await addDoc(collection(db, "deals"), {
-      ...dealForm, postedDate: new Date().toLocaleDateString(), verified: false, createdAt: Date.now(),
+      ...dealForm, 
+      userId: user.uid,
+      postedDate: new Date().toLocaleDateString(), 
+      verified: false, 
+      createdAt: Date.now(),
     });
     setDealForm(EMPTY_DEAL);
     setPosted(true);
@@ -179,19 +217,43 @@ export default function App() {
   const submitBuyer = async () => {
     if (!buyerForm.name || !buyerForm.markets) return;
     await addDoc(collection(db, "buyers"), {
-      ...buyerForm, postedDate: new Date().toLocaleDateString(), createdAt: Date.now(),
+      ...buyerForm, 
+      userId: user.uid,
+      postedDate: new Date().toLocaleDateString(), 
+      createdAt: Date.now(),
     });
     setBuyerForm(EMPTY_BUYER);
     setProfileSaved(true);
     setTimeout(() => setProfileSaved(false), 2500);
   };
 
-  // Admin function to toggle a deal's verification status in Firestore
   const toggleVerifyDeal = async (id, currentStatus) => {
     const dealRef = doc(db, "deals", id);
-    await updateDoc(dealRef, {
-      verified: !currentStatus
-    });
+    await updateDoc(dealRef, { verified: !currentStatus });
+  };
+
+  // Auth Action Handlers
+  const handleEmailAuth = async (e) => {
+    e.preventDefault();
+    setAuthError("");
+    try {
+      if (authMode === "login") {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        await createUserWithEmailAndPassword(auth, email, password);
+      }
+    } catch (err) {
+      setAuthError(err.message.replace("Firebase: ", ""));
+    }
+  };
+
+  const handleGoogleAuth = async () => {
+    setAuthError("");
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (err) {
+      setAuthError(err.message.replace("Firebase: ", ""));
+    }
   };
  
   const filteredDeals = deals.filter((d) => {
@@ -209,7 +271,68 @@ export default function App() {
       fontWeight: 700, fontSize: 14, fontFamily: SANS, transition: "all 0.15s",
     }}>{label}</button>
   );
- 
+
+  if (authLoading) {
+    return <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", background: PAL.bg, color: PAL.muted, fontFamily: SANS }}>Loading platform...</div>;
+  }
+
+  // --- RENDERS THE AUTH INTERFACE IF NOT LOGGED IN ---
+  if (!user) {
+    return (
+      <div style={{ background: PAL.bg, minHeight: "100vh", fontFamily: SANS, color: PAL.ink, display: "flex", justifyContent: "center", alignItems: "center", padding: 20 }}>
+        <div style={{ background: PAL.paper, border: `1px solid ${PAL.paperBorder}`, borderRadius: 12, padding: "32px 28px", maxWidth: 380, width: "100%", boxSizing: "border-box" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+            <Seal size={36} status="verified" />
+            <div style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 700 }}>DirectToSeller</div>
+          </div>
+          
+          <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 20px 0" }}>
+            {authMode === "login" ? "Sign in to your account" : "Create your free account"}
+          </h2>
+
+          <form onSubmit={handleEmailAuth} style={{ display: "grid", gap: 14 }}>
+            <Field label="Email Address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@domain.com" />
+            <Field label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+            
+            {authError && <div style={{ color: PAL.brick, fontSize: 12.5, fontWeight: 600 }}>{authError}</div>}
+            
+            <Btn primary style={{ width: "100%", marginTop: 4 }}>
+              {authMode === "login" ? "Sign In" : "Sign Up"}
+            </Btn>
+          </form>
+
+          <div style={{ display: "flex", alignItems: "center", margin: "20px 0", color: PAL.paperBorder }}>
+            <div style={{ flex: 1, height: 1, background: PAL.paperBorder }}></div>
+            <span style={{ padding: "0 10px", fontSize: 12, color: PAL.muted, fontWeight: 600 }}>OR</span>
+            <div style={{ flex: 1, height: 1, background: PAL.paperBorder }}></div>
+          </div>
+
+          <button onClick={handleGoogleAuth} style={{
+            width: "100%", padding: "11px 0", borderRadius: 8, border: `1px solid ${PAL.paperBorder}`,
+            background: "#fff", color: PAL.ink, fontWeight: 700, fontSize: 13.5, fontFamily: SANS, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8
+          }}>
+            <svg width="18" height="18" viewBox="0 0 18 18" style={{ display: "block" }}>
+              <path d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84c-.21 1.12-.84 2.07-1.79 2.7v2.25h2.9c1.69-1.55 2.69-3.83 2.69-6.58z" fill="#4285F4" />
+              <path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.25c-.8.54-1.83.86-3.06.86-2.35 0-4.34-1.58-5.05-3.71H.95v2.32C2.43 15.98 5.46 18 9 18z" fill="#34A853" />
+              <path d="M3.95 10.72A5.4 5.4 0 0 1 3.6 9c0-.6.1-1.17.25-1.72V4.96H.95A8.99 8.99 0 0 0 0 9c0 1.51.37 2.96 1.02 4.25l2.93-2.53z" fill="#FBBC05" />
+              <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15 2.4C13.46.96 11.42 0 9 0 5.46 0 2.43 2.02.95 4.96l2.93 2.32C4.66 5.16 6.65 3.58 9 3.58z" fill="#EA4335" />
+            </svg>
+            Continue with Google
+          </button>
+
+          <div style={{ textAlign: "center", marginTop: 24, fontSize: 13, color: PAL.muted }}>
+            {authMode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
+            <span onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")} style={{ color: PAL.emerald, fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>
+              {authMode === "login" ? "Sign up free" : "Log in"}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- RENDER MAIN INTERFACE IF LOGGED IN ---
   return (
     <div style={{ background: PAL.bg, minHeight: "100vh", fontFamily: SANS, color: PAL.ink }}>
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "36px 20px 60px" }}>
@@ -225,22 +348,27 @@ export default function App() {
             </div>
           </div>
           
-          {/* Secret Backdoor Input Form */}
-          {!isAdmin && (
-            <input 
-              type="password" 
-              placeholder="Admin" 
-              value={passInput} 
-              onChange={(e) => {
-                setPassInput(e.target.value);
-                if (e.target.value === "apprehension") { // CHANGE THIS PASSCODE TO WHATEVER YOU WANT
-                  setIsAdmin(true);
-                  setPassInput("");
-                }
-              }} 
-              style={{ width: 80, fontSize: 10, border: "none", background: "transparent", textAlign: "right", color: PAL.paperBorder, outline: "none" }}
-            />
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button onClick={() => signOut(auth)} style={{ background: "none", border: "none", color: PAL.muted, fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}>
+              Sign Out ({user.email ? user.email.split("@")[0] : "Google User"})
+            </button>
+            
+            {!isAdmin && (
+              <input 
+                type="password" 
+                placeholder="Admin" 
+                value={passInput} 
+                onChange={(e) => {
+                  setPassInput(e.target.value);
+                  if (e.target.value === "apprehension") {
+                    setIsAdmin(true);
+                    setPassInput("");
+                  }
+                }} 
+                style={{ width: 80, fontSize: 10, border: "none", background: "transparent", textAlign: "right", color: PAL.paperBorder, outline: "none" }}
+              />
+            )}
+          </div>
         </div>
         <div style={{ color: PAL.muted, fontSize: 14.5, marginBottom: 28, maxWidth: 480, lineHeight: 1.5 }}>
           Off-market deals and cash buyers, without the Facebook noise. No daisy chains, no bots, no guessing on the numbers.
@@ -361,7 +489,7 @@ export default function App() {
           </div>
         )}
  
-        {/* BUY BOX */}
+        {/* MY BUY BOX */}
         {tab === "buybox" && (
           <div>
             <div style={{ color: PAL.muted, fontSize: 13.5, marginBottom: 20, lineHeight: 1.5 }}>
@@ -390,11 +518,20 @@ export default function App() {
               {profileSaved ? "✓ Buy Box Saved" : "Save Buy Box"}
             </Btn>
  
+            {/* Show User Their Saved Buy Box Profile */}
             {buyers.length > 0 && (
               <div style={{ marginTop: 28 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: PAL.muted, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>
-                  {buyers.length} buyer{buyers.length > 1 ? "s" : ""} active on the platform
+                <div style={{ fontSize: 11, fontWeight: 700, color: PAL.muted, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>
+                  Your Active Buy Box Profile
                 </div>
+                {buyers.map((b) => (
+                  <div key={b.id} style={{ background: PAL.paper, border: `1px solid ${PAL.paperBorder}`, borderRadius: 8, padding: 14, marginBottom: 10 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{b.name}</div>
+                    <div style={{ fontSize: 13, color: PAL.ink }}><strong>Markets:</strong> {b.markets}</div>
+                    <div style={{ fontSize: 13, color: PAL.ink }}><strong>Max Price:</strong> {fmt(b.maxPrice)}</div>
+                    <div style={{ fontSize: 13, color: PAL.ink }}><strong>Types:</strong> {b.propertyTypes?.join(", ") || "All"}</div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
