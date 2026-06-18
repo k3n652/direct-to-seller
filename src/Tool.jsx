@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc } from "firebase/firestore";
 
 // Replace these with your own Firebase project values (Project Settings > Your apps)
 const firebaseConfig = {
@@ -105,7 +105,7 @@ function Btn({ onClick, children, primary, disabled, style = {} }) {
       color: disabled ? "#999" : primary ? "#fff" : PAL.ink,
       fontWeight: 700, fontSize: 13.5, fontFamily: SANS, cursor: disabled ? "not-allowed" : "pointer",
       transition: "opacity 0.15s", ...style,
-    }}>{children}</button>
+     }}>{children}</button>
   );
 }
  
@@ -137,7 +137,11 @@ export default function App() {
   const [profileSaved, setProfileSaved] = useState(false);
   const [filters, setFilters] = useState({ state: "", maxPrice: "", propertyType: "All" });
   const [revealedContact, setRevealedContact] = useState(null);
- 
+  
+  // Admin Backdoor Access States
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [passInput, setPassInput] = useState("");
+
   useEffect(() => {
     document.body.style.margin = "0";
     document.body.style.background = PAL.bg;
@@ -181,6 +185,14 @@ export default function App() {
     setProfileSaved(true);
     setTimeout(() => setProfileSaved(false), 2500);
   };
+
+  // Admin function to toggle a deal's verification status in Firestore
+  const toggleVerifyDeal = async (id, currentStatus) => {
+    const dealRef = doc(db, "deals", id);
+    await updateDoc(dealRef, {
+      verified: !currentStatus
+    });
+  };
  
   const filteredDeals = deals.filter((d) => {
     const stateOk = !filters.state || (d.state || "").toLowerCase().includes(filters.state.toLowerCase());
@@ -203,13 +215,32 @@ export default function App() {
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "36px 20px 60px" }}>
  
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 8 }}>
-          <Seal size={44} status="verified" />
-          <div>
-            <div style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 700, color: PAL.ink, letterSpacing: "-0.01em" }}>
-              DirectToSeller
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <Seal size={44} status="verified" />
+            <div>
+              <div style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 700, color: PAL.ink, letterSpacing: "-0.01em" }}>
+                DirectToSeller
+              </div>
             </div>
           </div>
+          
+          {/* Secret Backdoor Input Form */}
+          {!isAdmin && (
+            <input 
+              type="password" 
+              placeholder="Admin pass" 
+              value={passInput} 
+              onChange={(e) => {
+                setPassInput(e.target.value);
+                if (e.target.value === "admin123") { // CHANGE THIS PASSCODE TO WHATEVER YOU WANT
+                  setIsAdmin(true);
+                  setPassInput("");
+                }
+              }} 
+              style={{ width: 80, fontSize: 10, border: "none", background: "transparent", textAlign: "right", color: PAL.paperBorder, outline: "none" }}
+            />
+          )}
         </div>
         <div style={{ color: PAL.muted, fontSize: 14.5, marginBottom: 28, maxWidth: 480, lineHeight: 1.5 }}>
           Off-market deals and cash buyers, without the Facebook noise. No daisy chains, no bots, no guessing on the numbers.
@@ -220,6 +251,7 @@ export default function App() {
           <TabBtn id="browse" label={`Browse Deals (${deals.length})`} />
           <TabBtn id="post" label="Post a Deal" />
           <TabBtn id="buybox" label="My Buy Box" />
+          {isAdmin && <TabBtn id="admin" label="🛡️ Admin Panel" />}
         </div>
  
         {/* BROWSE */}
@@ -273,15 +305,24 @@ export default function App() {
                         <div style={{ fontSize: 12, color: PAL.emeraldDark, fontWeight: 700 }}>
                           {matches > 0 ? `${matches} buyer${matches > 1 ? "s" : ""} in your network match this` : "Posted " + d.postedDate}
                         </div>
-                        {revealedContact === d.id ? (
-                          <div style={{ fontSize: 13, fontWeight: 700, color: PAL.ink, background: "#fff", border: `1px solid ${PAL.paperBorder}`, padding: "6px 12px", borderRadius: 7 }}>
-                            {d.contact}
-                          </div>
-                        ) : (
-                          <Btn primary onClick={() => setRevealedContact(d.id)} style={{ padding: "8px 14px", fontSize: 12.5 }}>
-                            Contact Wholesaler
-                          </Btn>
-                        )}
+                        
+                        <div style={{ display: "flex", gap: 8 }}>
+                          {isAdmin && (
+                            <Btn onClick={() => toggleVerifyDeal(d.id, d.verified)} style={{ borderColor: d.verified ? PAL.brick : PAL.emerald, color: d.verified ? PAL.brick : PAL.emerald }}>
+                              {d.verified ? "Unverify" : "Approve Verification"}
+                            </Btn>
+                          )}
+                          
+                          {revealedContact === d.id ? (
+                            <div style={{ fontSize: 13, fontWeight: 700, color: PAL.ink, background: "#fff", border: `1px solid ${PAL.paperBorder}`, padding: "6px 12px", borderRadius: 7 }}>
+                              {d.contact}
+                            </div>
+                          ) : (
+                            <Btn primary onClick={() => setRevealedContact(d.id)} style={{ padding: "8px 14px", fontSize: 12.5 }}>
+                              Contact Wholesaler
+                            </Btn>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -358,6 +399,31 @@ export default function App() {
             )}
           </div>
         )}
+
+        {/* ADMIN PANEL VIEW */}
+        {isAdmin && tab === "admin" && (
+          <div style={{ background: PAL.paper, border: `1px solid ${PAL.paperBorder}`, borderRadius: 10, padding: 20 }}>
+            <h3 style={{ fontFamily: SERIF, marginTop: 0, marginBottom: 16 }}>Pending Verifications</h3>
+            {deals.filter(d => !d.verified).length === 0 ? (
+              <div style={{ color: PAL.muted, fontSize: 14 }}>All clean! No deals are currently pending review.</div>
+            ) : (
+              <div style={{ display: "grid", gap: 10 }}>
+                {deals.filter(d => !d.verified).map(d => (
+                  <div key={d.id} style={{ background: "#fff", border: `1px solid ${PAL.paperBorder}`, borderRadius: 7, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>{d.address}</div>
+                      <div style={{ fontSize: 12, color: PAL.muted }}>{d.city}, {d.state} · {fmt(d.price)}</div>
+                    </div>
+                    <Btn primary onClick={() => toggleVerifyDeal(d.id, d.verified)} style={{ padding: "6px 12px", fontSize: 12 }}>
+                      Approve
+                    </Btn>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   );
