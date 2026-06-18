@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc, where } from "firebase/firestore";
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  signOut, 
-  onAuthStateChanged 
+import {
+  getFirestore, collection, addDoc, onSnapshot, query, orderBy,
+  updateDoc, doc, where, getDoc, setDoc,
+} from "firebase/firestore";
+import {
+  getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged,
 } from "firebase/auth";
 
 // Replace these with your own Firebase project values (Project Settings > Your apps)
@@ -19,7 +17,7 @@ const firebaseConfig = {
   storageBucket: "direct-to-seller.firebasestorage.app",
   messagingSenderId: "366400953836",
   appId: "1:366400953836:web:f7277877d7a58c3d95b4c9",
-  measurementId: "G-55JR8KG1HF"
+  measurementId: "G-55JR8KG1HF",
 };
 
 const fbApp = initializeApp(firebaseConfig);
@@ -28,28 +26,18 @@ const auth = getAuth(fbApp);
 const googleProvider = new GoogleAuthProvider();
 
 const PAL = {
-  bg: "#FFFFFF",
-  paper: "#F7F5EF",
-  paperBorder: "#E6E2D6",
-  ink: "#15201B",
-  muted: "#70766A",
-  emerald: "#1F5C4D",
-  emeraldDark: "#163F35",
-  emeraldTint: "#E9F1ED",
-  gold: "#A8823F",
-  goldTint: "#F5EEDF",
-  brick: "#9C3B33",
-  brickTint: "#F6EAE8",
+  bg: "#FFFFFF", paper: "#F7F5EF", paperBorder: "#E6E2D6", ink: "#15201B",
+  muted: "#70766A", emerald: "#1F5C4D", emeraldDark: "#163F35", emeraldTint: "#E9F1ED",
+  gold: "#A8823F", goldTint: "#F5EEDF", brick: "#9C3B33", brickTint: "#F6EAE8",
 };
- 
+
 const SERIF = "'Iowan Old Style', 'Source Serif Pro', Georgia, 'Times New Roman', serif";
 const SANS = "'Inter', -apple-system, system-ui, sans-serif";
- 
+
 const fmt = (n) => !n || isNaN(n) ? "—" : "$" + Number(n).toLocaleString("en-US", { maximumFractionDigits: 0 });
- 
 const PROPERTY_TYPES = ["Single Family", "Multifamily", "Land", "Townhome/Condo", "Mixed Use"];
- 
-/* ---------- Signature element: verification seal ---------- */
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
 function Seal({ size = 40, status = "pending", color }) {
   const c = color || (status === "verified" ? PAL.emerald : PAL.gold);
   return (
@@ -67,8 +55,7 @@ function Seal({ size = 40, status = "pending", color }) {
     </svg>
   );
 }
- 
-/* ---------- Shared field components ---------- */
+
 const inputBase = {
   background: "#fff", border: `1px solid ${PAL.paperBorder}`, borderRadius: 7,
   color: PAL.ink, fontSize: 14.5, padding: "10px 12px", width: "100%",
@@ -78,7 +65,7 @@ const labelBase = {
   color: PAL.muted, fontSize: 11, fontWeight: 700, letterSpacing: "0.07em",
   textTransform: "uppercase", marginBottom: 6, display: "block", fontFamily: SANS,
 };
- 
+
 function Field({ label, value, onChange, placeholder, prefix, type = "text", textarea }) {
   return (
     <div>
@@ -96,7 +83,7 @@ function Field({ label, value, onChange, placeholder, prefix, type = "text", tex
     </div>
   );
 }
- 
+
 function Select({ label, value, onChange, options }) {
   return (
     <div>
@@ -107,19 +94,19 @@ function Select({ label, value, onChange, options }) {
     </div>
   );
 }
- 
-function Btn({ onClick, children, primary, disabled, style = {} }) {
+
+function Btn({ onClick, children, primary, disabled, type, style = {} }) {
   return (
-    <button onClick={onClick} disabled={disabled} style={{
+    <button type={type} onClick={onClick} disabled={disabled} style={{
       padding: "11px 18px", borderRadius: 8, border: primary ? "none" : `1px solid ${PAL.paperBorder}`,
       background: disabled ? "#eee" : primary ? PAL.emerald : "#fff",
       color: disabled ? "#999" : primary ? "#fff" : PAL.ink,
       fontWeight: 700, fontSize: 13.5, fontFamily: SANS, cursor: disabled ? "not-allowed" : "pointer",
       transition: "opacity 0.15s", ...style,
-     }}>{children}</button>
+    }}>{children}</button>
   );
 }
- 
+
 function matchCount(deal, buyers) {
   return buyers.filter((b) => {
     const markets = (b.markets || "").toLowerCase().split(",").map((m) => m.trim()).filter(Boolean);
@@ -133,21 +120,87 @@ function matchCount(deal, buyers) {
     return hit && priceOk && typeOk;
   }).length;
 }
- 
+
+/* ---------- Inline auth (shown only when Post/Buy Box requires login) ---------- */
+function AuthInline({ contextLabel, authMode, setAuthMode, email, setEmail, password, setPassword, authError, onSubmit, onGoogle }) {
+  return (
+    <div style={{ background: PAL.paper, border: `1px solid ${PAL.paperBorder}`, borderRadius: 12, padding: "28px 24px", maxWidth: 380, margin: "0 auto" }}>
+      <h3 style={{ fontFamily: SERIF, fontSize: 18, margin: "0 0 6px" }}>
+        {authMode === "login" ? "Sign in to continue" : "Create your free account"}
+      </h3>
+      <div style={{ color: PAL.muted, fontSize: 13, marginBottom: 18 }}>
+        You'll need an account to {contextLabel}. Browsing deals doesn't require one.
+      </div>
+      <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
+        <Field label="Email Address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@domain.com" />
+        <Field label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+        {authError && <div style={{ color: PAL.brick, fontSize: 12.5, fontWeight: 600 }}>{authError}</div>}
+        <Btn primary type="submit" style={{ width: "100%", marginTop: 4 }}>
+          {authMode === "login" ? "Sign In" : "Sign Up"}
+        </Btn>
+      </form>
+      <div style={{ display: "flex", alignItems: "center", margin: "18px 0" }}>
+        <div style={{ flex: 1, height: 1, background: PAL.paperBorder }} />
+        <span style={{ padding: "0 10px", fontSize: 12, color: PAL.muted, fontWeight: 600 }}>OR</span>
+        <div style={{ flex: 1, height: 1, background: PAL.paperBorder }} />
+      </div>
+      <button onClick={onGoogle} type="button" style={{
+        width: "100%", padding: "11px 0", borderRadius: 8, border: `1px solid ${PAL.paperBorder}`,
+        background: "#fff", color: PAL.ink, fontWeight: 700, fontSize: 13.5, fontFamily: SANS, cursor: "pointer",
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+      }}>
+        <svg width="18" height="18" viewBox="0 0 18 18">
+          <path d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84c-.21 1.12-.84 2.07-1.79 2.7v2.25h2.9c1.69-1.55 2.69-3.83 2.69-6.58z" fill="#4285F4" />
+          <path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.25c-.8.54-1.83.86-3.06.86-2.35 0-4.34-1.58-5.05-3.71H.95v2.32C2.43 15.98 5.46 18 9 18z" fill="#34A853" />
+          <path d="M3.95 10.72A5.4 5.4 0 0 1 3.6 9c0-.6.1-1.17.25-1.72V4.96H.95A8.99 8.99 0 0 0 0 9c0 1.51.37 2.96 1.02 4.25l2.93-2.53z" fill="#FBBC05" />
+          <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15 2.4C13.46.96 11.42 0 9 0 5.46 0 2.43 2.02.95 4.96l2.93 2.32C4.66 5.16 6.65 3.58 9 3.58z" fill="#EA4335" />
+        </svg>
+        Continue with Google
+      </button>
+      <div style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: PAL.muted }}>
+        {authMode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
+        <span onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")} style={{ color: PAL.emerald, fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>
+          {authMode === "login" ? "Sign up free" : "Log in"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function RoleSelect({ onSelect, saving }) {
+  return (
+    <div style={{ background: PAL.paper, border: `1px solid ${PAL.paperBorder}`, borderRadius: 12, padding: "28px 24px", maxWidth: 380, margin: "0 auto", textAlign: "center" }}>
+      <h3 style={{ fontFamily: SERIF, fontSize: 18, margin: "0 0 6px" }}>One last thing</h3>
+      <div style={{ color: PAL.muted, fontSize: 13, marginBottom: 20 }}>Are you here to post deals or find them?</div>
+      <div style={{ display: "grid", gap: 10 }}>
+        <Btn primary disabled={saving} onClick={() => onSelect("wholesaler")} style={{ width: "100%", padding: "12px 0" }}>
+          I'm a Wholesaler — I post deals
+        </Btn>
+        <Btn disabled={saving} onClick={() => onSelect("buyer")} style={{ width: "100%", padding: "12px 0" }}>
+          I'm a Buyer — I'm looking for deals
+        </Btn>
+      </div>
+    </div>
+  );
+}
+
 const EMPTY_DEAL = { wholesalerName: "", address: "", city: "", state: "", zip: "", price: "", arv: "", repairs: "", propertyType: PROPERTY_TYPES[0], description: "", contact: "" };
 const EMPTY_BUYER = { name: "", markets: "", maxPrice: "", propertyTypes: [], contact: "" };
- 
+
 export default function App() {
   const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [authMode, setAuthMode] = useState("login"); // 'login' or 'signup'
+  const [roleSaving, setRoleSaving] = useState(false);
+  const [authMode, setAuthMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
 
   const [tab, setTab] = useState("browse");
   const [deals, setDeals] = useState([]);
-  const [buyers, setBuyers] = useState([]);
+  const [buyers, setBuyers] = useState([]); // ALL buyers — used for match counts in Browse
+  const [myBuyBoxes, setMyBuyBoxes] = useState([]); // just the logged-in user's own buy boxes
   const [loading, setLoading] = useState(true);
   const [dealForm, setDealForm] = useState(EMPTY_DEAL);
   const [buyerForm, setBuyerForm] = useState(EMPTY_BUYER);
@@ -155,72 +208,78 @@ export default function App() {
   const [profileSaved, setProfileSaved] = useState(false);
   const [filters, setFilters] = useState({ state: "", maxPrice: "", propertyType: "All" });
   const [revealedContact, setRevealedContact] = useState(null);
-  
+
   const [isAdmin, setIsAdmin] = useState(false);
   const [passInput, setPassInput] = useState("");
 
-  // Handle Authentication Status Changes
+  // Auth state + fetch role doc
   useEffect(() => {
-    const unsubAuth = onAuthStateChanged(auth, (currentUser) => {
+    const unsubAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        try {
+          const snap = await getDoc(doc(db, "users", currentUser.uid));
+          setUserRole(snap.exists() ? snap.data().role : null);
+        } catch {
+          setUserRole(null);
+        }
+      } else {
+        setUserRole(null);
+      }
       setAuthLoading(false);
     });
     return () => unsubAuth();
   }, []);
 
-  // Sync Global Deals Feed & User Specific Buy Box Data
+  // Public data — deals + all buyers, loads regardless of login (browsing is open to everyone)
   useEffect(() => {
-    if (!user) return;
-
     document.body.style.margin = "0";
     document.body.style.background = PAL.bg;
- 
+
     const dealsQuery = query(collection(db, "deals"), orderBy("createdAt", "desc"));
     const unsubDeals = onSnapshot(dealsQuery, (snap) => {
       setDeals(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setLoading(false);
     });
- 
-    // ONLY fetch buy boxes belonging to this specific logged-in user ID
-    const buyersQuery = query(
-      collection(db, "buyers"), 
-      where("userId", "==", user.uid),
-      orderBy("createdAt", "desc")
-    );
+
+    const buyersQuery = query(collection(db, "buyers"), orderBy("createdAt", "desc"));
     const unsubBuyers = onSnapshot(buyersQuery, (snap) => {
       setBuyers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
- 
+
     return () => { unsubDeals(); unsubBuyers(); };
+  }, []);
+
+  // Your own buy boxes — only needed once logged in
+  useEffect(() => {
+    if (!user) { setMyBuyBoxes([]); return; }
+    const myQuery = query(collection(db, "buyers"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(myQuery, (snap) => {
+      setMyBuyBoxes(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
   }, [user]);
- 
+
   const setDF = (k) => (e) => setDealForm((p) => ({ ...p, [k]: e.target.value }));
   const setBF = (k) => (e) => setBuyerForm((p) => ({ ...p, [k]: e.target.value }));
   const togglePropType = (t) => setBuyerForm((p) => ({
     ...p, propertyTypes: p.propertyTypes.includes(t) ? p.propertyTypes.filter((x) => x !== t) : [...p.propertyTypes, t],
   }));
- 
+
   const submitDeal = async () => {
-    if (!dealForm.wholesalerName || !dealForm.address || !dealForm.price) return;
+    if (!user || !dealForm.wholesalerName || !dealForm.address || !dealForm.price) return;
     await addDoc(collection(db, "deals"), {
-      ...dealForm, 
-      userId: user.uid,
-      postedDate: new Date().toLocaleDateString(), 
-      verified: false, 
-      createdAt: Date.now(),
+      ...dealForm, userId: user.uid, postedDate: new Date().toLocaleDateString(), verified: false, createdAt: Date.now(),
     });
     setDealForm(EMPTY_DEAL);
     setPosted(true);
     setTimeout(() => setPosted(false), 2500);
   };
- 
+
   const submitBuyer = async () => {
-    if (!buyerForm.name || !buyerForm.markets) return;
+    if (!user || !buyerForm.name || !buyerForm.markets) return;
     await addDoc(collection(db, "buyers"), {
-      ...buyerForm, 
-      userId: user.uid,
-      postedDate: new Date().toLocaleDateString(), 
-      createdAt: Date.now(),
+      ...buyerForm, userId: user.uid, postedDate: new Date().toLocaleDateString(), createdAt: Date.now(),
     });
     setBuyerForm(EMPTY_BUYER);
     setProfileSaved(true);
@@ -228,20 +287,26 @@ export default function App() {
   };
 
   const toggleVerifyDeal = async (id, currentStatus) => {
-    const dealRef = doc(db, "deals", id);
-    await updateDoc(dealRef, { verified: !currentStatus });
+    await updateDoc(doc(db, "deals", id), { verified: !currentStatus });
   };
 
-  // Auth Action Handlers
+  const saveRole = async (role) => {
+    if (!user) return;
+    setRoleSaving(true);
+    try {
+      await setDoc(doc(db, "users", user.uid), { role, email: user.email || "", createdAt: Date.now() });
+      setUserRole(role);
+    } finally {
+      setRoleSaving(false);
+    }
+  };
+
   const handleEmailAuth = async (e) => {
     e.preventDefault();
     setAuthError("");
     try {
-      if (authMode === "login") {
-        await signInWithEmailAndPassword(auth, email, password);
-      } else {
-        await createUserWithEmailAndPassword(auth, email, password);
-      }
+      if (authMode === "login") await signInWithEmailAndPassword(auth, email, password);
+      else await createUserWithEmailAndPassword(auth, email, password);
     } catch (err) {
       setAuthError(err.message.replace("Firebase: ", ""));
     }
@@ -255,14 +320,16 @@ export default function App() {
       setAuthError(err.message.replace("Firebase: ", ""));
     }
   };
- 
+
+  // Browse feed: filters + 30-day auto-hide for stale listings
   const filteredDeals = deals.filter((d) => {
+    const notExpired = !d.createdAt || (Date.now() - d.createdAt < THIRTY_DAYS_MS);
     const stateOk = !filters.state || (d.state || "").toLowerCase().includes(filters.state.toLowerCase());
     const priceOk = !filters.maxPrice || Number(d.price) <= Number(filters.maxPrice);
     const typeOk = filters.propertyType === "All" || d.propertyType === filters.propertyType;
-    return stateOk && priceOk && typeOk;
+    return notExpired && stateOk && priceOk && typeOk;
   });
- 
+
   const TabBtn = ({ id, label }) => (
     <button onClick={() => setTab(id)} style={{
       padding: "10px 18px", border: "none", background: "none", cursor: "pointer",
@@ -272,99 +339,49 @@ export default function App() {
     }}>{label}</button>
   );
 
-  if (authLoading) {
-    return <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", background: PAL.bg, color: PAL.muted, fontFamily: SANS }}>Loading platform...</div>;
-  }
+  // Gated tab content: not logged in -> auth form; logged in w/o role -> role picker; else -> children
+  const Gated = ({ contextLabel, children }) => {
+    if (authLoading) return <div style={{ color: PAL.muted, textAlign: "center", padding: 40 }}>Checking session…</div>;
+    if (!user) {
+      return (
+        <AuthInline
+          contextLabel={contextLabel}
+          authMode={authMode} setAuthMode={setAuthMode}
+          email={email} setEmail={setEmail}
+          password={password} setPassword={setPassword}
+          authError={authError}
+          onSubmit={handleEmailAuth}
+          onGoogle={handleGoogleAuth}
+        />
+      );
+    }
+    if (!userRole) return <RoleSelect onSelect={saveRole} saving={roleSaving} />;
+    return children;
+  };
 
-  // --- RENDERS THE AUTH INTERFACE IF NOT LOGGED IN ---
-  if (!user) {
-    return (
-      <div style={{ background: PAL.bg, minHeight: "100vh", fontFamily: SANS, color: PAL.ink, display: "flex", justifyContent: "center", alignItems: "center", padding: 20 }}>
-        <div style={{ background: PAL.paper, border: `1px solid ${PAL.paperBorder}`, borderRadius: 12, padding: "32px 28px", maxWidth: 380, width: "100%", boxSizing: "border-box" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-            <Seal size={36} status="verified" />
-            <div style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 700 }}>DirectToSeller</div>
-          </div>
-          
-          <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 20px 0" }}>
-            {authMode === "login" ? "Sign in to your account" : "Create your free account"}
-          </h2>
-
-          <form onSubmit={handleEmailAuth} style={{ display: "grid", gap: 14 }}>
-            <Field label="Email Address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@domain.com" />
-            <Field label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
-            
-            {authError && <div style={{ color: PAL.brick, fontSize: 12.5, fontWeight: 600 }}>{authError}</div>}
-            
-            <Btn primary style={{ width: "100%", marginTop: 4 }}>
-              {authMode === "login" ? "Sign In" : "Sign Up"}
-            </Btn>
-          </form>
-
-          <div style={{ display: "flex", alignItems: "center", margin: "20px 0", color: PAL.paperBorder }}>
-            <div style={{ flex: 1, height: 1, background: PAL.paperBorder }}></div>
-            <span style={{ padding: "0 10px", fontSize: 12, color: PAL.muted, fontWeight: 600 }}>OR</span>
-            <div style={{ flex: 1, height: 1, background: PAL.paperBorder }}></div>
-          </div>
-
-          <button onClick={handleGoogleAuth} style={{
-            width: "100%", padding: "11px 0", borderRadius: 8, border: `1px solid ${PAL.paperBorder}`,
-            background: "#fff", color: PAL.ink, fontWeight: 700, fontSize: 13.5, fontFamily: SANS, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8
-          }}>
-            <svg width="18" height="18" viewBox="0 0 18 18" style={{ display: "block" }}>
-              <path d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84c-.21 1.12-.84 2.07-1.79 2.7v2.25h2.9c1.69-1.55 2.69-3.83 2.69-6.58z" fill="#4285F4" />
-              <path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.25c-.8.54-1.83.86-3.06.86-2.35 0-4.34-1.58-5.05-3.71H.95v2.32C2.43 15.98 5.46 18 9 18z" fill="#34A853" />
-              <path d="M3.95 10.72A5.4 5.4 0 0 1 3.6 9c0-.6.1-1.17.25-1.72V4.96H.95A8.99 8.99 0 0 0 0 9c0 1.51.37 2.96 1.02 4.25l2.93-2.53z" fill="#FBBC05" />
-              <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15 2.4C13.46.96 11.42 0 9 0 5.46 0 2.43 2.02.95 4.96l2.93 2.32C4.66 5.16 6.65 3.58 9 3.58z" fill="#EA4335" />
-            </svg>
-            Continue with Google
-          </button>
-
-          <div style={{ textAlign: "center", marginTop: 24, fontSize: 13, color: PAL.muted }}>
-            {authMode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
-            <span onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")} style={{ color: PAL.emerald, fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>
-              {authMode === "login" ? "Sign up free" : "Log in"}
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // --- RENDER MAIN INTERFACE IF LOGGED IN ---
   return (
     <div style={{ background: PAL.bg, minHeight: "100vh", fontFamily: SANS, color: PAL.ink }}>
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "36px 20px 60px" }}>
- 
+
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <Seal size={44} status="verified" />
-            <div>
-              <div style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 700, color: PAL.ink, letterSpacing: "-0.01em" }}>
-                DirectToSeller
-              </div>
-            </div>
+            <div style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 700, letterSpacing: "-0.01em" }}>DirectToSeller</div>
           </div>
-          
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button onClick={() => signOut(auth)} style={{ background: "none", border: "none", color: PAL.muted, fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}>
-              Sign Out ({user.email ? user.email.split("@")[0] : "Google User"})
-            </button>
-            
+            {user && (
+              <button onClick={() => signOut(auth)} style={{ background: "none", border: "none", color: PAL.muted, fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}>
+                Sign Out ({user.email ? user.email.split("@")[0] : "Google User"})
+              </button>
+            )}
             {!isAdmin && (
-              <input 
-                type="password" 
-                placeholder="Admin" 
-                value={passInput} 
+              <input
+                type="password" placeholder="Admin" value={passInput}
                 onChange={(e) => {
                   setPassInput(e.target.value);
-                  if (e.target.value === "apprehension") {
-                    setIsAdmin(true);
-                    setPassInput("");
-                  }
-                }} 
+                  if (e.target.value === "apprehension") { setIsAdmin(true); setPassInput(""); }
+                }}
                 style={{ width: 80, fontSize: 10, border: "none", background: "transparent", textAlign: "right", color: PAL.paperBorder, outline: "none" }}
               />
             )}
@@ -373,16 +390,16 @@ export default function App() {
         <div style={{ color: PAL.muted, fontSize: 14.5, marginBottom: 28, maxWidth: 480, lineHeight: 1.5 }}>
           Off-market deals and cash buyers, without the Facebook noise. No daisy chains, no bots, no guessing on the numbers.
         </div>
- 
+
         {/* Tabs */}
         <div style={{ display: "flex", gap: 4, borderBottom: `1px solid ${PAL.paperBorder}`, marginBottom: 28 }}>
-          <TabBtn id="browse" label={`Browse Deals (${deals.length})`} />
+          <TabBtn id="browse" label={`Browse Deals (${filteredDeals.length})`} />
           <TabBtn id="post" label="Post a Deal" />
           <TabBtn id="buybox" label="My Buy Box" />
           {isAdmin && <TabBtn id="admin" label="🛡️ Admin Panel" />}
         </div>
- 
-        {/* BROWSE */}
+
+        {/* BROWSE — open to everyone, no login required */}
         {tab === "browse" && (
           <div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 24 }}>
@@ -390,7 +407,7 @@ export default function App() {
               <Field label="Max Price" value={filters.maxPrice} onChange={(e) => setFilters((p) => ({ ...p, maxPrice: e.target.value }))} placeholder="e.g. 150000" prefix="$" />
               <Select label="Property Type" value={filters.propertyType} onChange={(e) => setFilters((p) => ({ ...p, propertyType: e.target.value }))} options={["All", ...PROPERTY_TYPES]} />
             </div>
- 
+
             {loading ? (
               <div style={{ color: PAL.muted, textAlign: "center", padding: 50 }}>Loading deals…</div>
             ) : filteredDeals.length === 0 ? (
@@ -417,7 +434,7 @@ export default function App() {
                           </span>
                         </div>
                       </div>
- 
+
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
                         {[["Price", fmt(d.price)], ["ARV", fmt(d.arv)], ["Repairs", fmt(d.repairs)], ["Est. Margin", fmt(margin)]].map(([l, v]) => (
                           <div key={l} style={{ background: "#fff", border: `1px solid ${PAL.paperBorder}`, borderRadius: 7, padding: "8px 10px" }}>
@@ -426,21 +443,19 @@ export default function App() {
                           </div>
                         ))}
                       </div>
- 
+
                       {d.description && <div style={{ fontSize: 13.5, color: PAL.ink, marginBottom: 12, lineHeight: 1.5 }}>{d.description}</div>}
- 
+
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div style={{ fontSize: 12, color: PAL.emeraldDark, fontWeight: 700 }}>
                           {matches > 0 ? `${matches} buyer${matches > 1 ? "s" : ""} in your network match this` : "Posted " + d.postedDate}
                         </div>
-                        
                         <div style={{ display: "flex", gap: 8 }}>
                           {isAdmin && (
                             <Btn onClick={() => toggleVerifyDeal(d.id, d.verified)} style={{ borderColor: d.verified ? PAL.brick : PAL.emerald, color: d.verified ? PAL.brick : PAL.emerald }}>
                               {d.verified ? "Unverify" : "Approve Verification"}
                             </Btn>
                           )}
-                          
                           {revealedContact === d.id ? (
                             <div style={{ fontSize: 13, fontWeight: 700, color: PAL.ink, background: "#fff", border: `1px solid ${PAL.paperBorder}`, padding: "6px 12px", borderRadius: 7 }}>
                               {d.contact}
@@ -459,93 +474,96 @@ export default function App() {
             )}
           </div>
         )}
- 
-        {/* POST A DEAL */}
+
+        {/* POST A DEAL — gated */}
         {tab === "post" && (
-          <div>
-            <div style={{ display: "grid", gap: 14, marginBottom: 20 }}>
-              <Field label="Your Name" value={dealForm.wholesalerName} onChange={setDF("wholesalerName")} placeholder="Jane Smith" />
-              <Field label="Property Address" value={dealForm.address} onChange={setDF("address")} placeholder="123 Main St" />
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10 }}>
-                <Field label="City" value={dealForm.city} onChange={setDF("city")} placeholder="Atlanta" />
-                <Field label="State" value={dealForm.state} onChange={setDF("state")} placeholder="GA" />
-                <Field label="Zip" value={dealForm.zip} onChange={setDF("zip")} placeholder="30309" />
-              </div>
-              <Select label="Property Type" value={dealForm.propertyType} onChange={setDF("propertyType")} options={PROPERTY_TYPES} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                <Field label="Purchase Price" value={dealForm.price} onChange={setDF("price")} placeholder="100000" prefix="$" />
-                <Field label="ARV" value={dealForm.arv} onChange={setDF("arv")} placeholder="200000" prefix="$" />
-                <Field label="Est. Repairs" value={dealForm.repairs} onChange={setDF("repairs")} placeholder="30000" prefix="$" />
-              </div>
-              <Field label="Description" value={dealForm.description} onChange={setDF("description")} placeholder="Title status, condition, motivation, anything a buyer needs to know" textarea />
-              <Field label="Your Contact Info" value={dealForm.contact} onChange={setDF("contact")} placeholder="Phone or email buyers can reach you at" />
-            </div>
-            <div style={{ background: PAL.goldTint, border: `1px solid ${PAL.gold}33`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12.5, color: PAL.gold, fontWeight: 600 }}>
-              Deals are reviewed manually before being marked "Verified." Yours will show as Pending until then.
-            </div>
-            <Btn primary disabled={!dealForm.wholesalerName || !dealForm.address || !dealForm.price} onClick={submitDeal} style={{ width: "100%", padding: "13px 0" }}>
-              {posted ? "✓ Deal Posted" : "Post Deal"}
-            </Btn>
-          </div>
-        )}
- 
-        {/* MY BUY BOX */}
-        {tab === "buybox" && (
-          <div>
-            <div style={{ color: PAL.muted, fontSize: 13.5, marginBottom: 20, lineHeight: 1.5 }}>
-              Set your criteria once. Deals that match your buy box will be flagged automatically in the feed.
-            </div>
-            <div style={{ display: "grid", gap: 14, marginBottom: 16 }}>
-              <Field label="Your Name / Company" value={buyerForm.name} onChange={setBF("name")} placeholder="Jane Smith Investments" />
-              <Field label="Markets You Buy In" value={buyerForm.markets} onChange={setBF("markets")} placeholder="Atlanta, 30309, GA — comma separated" />
-              <Field label="Max Purchase Price" value={buyerForm.maxPrice} onChange={setBF("maxPrice")} placeholder="150000" prefix="$" />
-              <div>
-                <label style={labelBase}>Property Types</label>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {PROPERTY_TYPES.map((t) => (
-                    <button key={t} onClick={() => togglePropType(t)} style={{
-                      padding: "7px 14px", borderRadius: 20, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
-                      border: `1px solid ${buyerForm.propertyTypes.includes(t) ? PAL.emerald : PAL.paperBorder}`,
-                      background: buyerForm.propertyTypes.includes(t) ? PAL.emeraldTint : "#fff",
-                      color: buyerForm.propertyTypes.includes(t) ? PAL.emeraldDark : PAL.muted,
-                    }}>{t}</button>
-                  ))}
+          <Gated contextLabel="post a deal">
+            <div>
+              <div style={{ display: "grid", gap: 14, marginBottom: 20 }}>
+                <Field label="Your Name" value={dealForm.wholesalerName} onChange={setDF("wholesalerName")} placeholder="Jane Smith" />
+                <Field label="Property Address" value={dealForm.address} onChange={setDF("address")} placeholder="123 Main St" />
+                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10 }}>
+                  <Field label="City" value={dealForm.city} onChange={setDF("city")} placeholder="Atlanta" />
+                  <Field label="State" value={dealForm.state} onChange={setDF("state")} placeholder="GA" />
+                  <Field label="Zip" value={dealForm.zip} onChange={setDF("zip")} placeholder="30309" />
                 </div>
-              </div>
-              <Field label="Contact Info" value={buyerForm.contact} onChange={setBF("contact")} placeholder="Phone or email wholesalers can reach you at" />
-            </div>
-            <Btn primary disabled={!buyerForm.name || !buyerForm.markets} onClick={submitBuyer} style={{ width: "100%", padding: "13px 0" }}>
-              {profileSaved ? "✓ Buy Box Saved" : "Save Buy Box"}
-            </Btn>
- 
-            {/* Show User Their Saved Buy Box Profile */}
-            {buyers.length > 0 && (
-              <div style={{ marginTop: 28 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: PAL.muted, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>
-                  Your Active Buy Box Profile
+                <Select label="Property Type" value={dealForm.propertyType} onChange={setDF("propertyType")} options={PROPERTY_TYPES} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                  <Field label="Purchase Price" value={dealForm.price} onChange={setDF("price")} placeholder="100000" prefix="$" />
+                  <Field label="ARV" value={dealForm.arv} onChange={setDF("arv")} placeholder="200000" prefix="$" />
+                  <Field label="Est. Repairs" value={dealForm.repairs} onChange={setDF("repairs")} placeholder="30000" prefix="$" />
                 </div>
-                {buyers.map((b) => (
-                  <div key={b.id} style={{ background: PAL.paper, border: `1px solid ${PAL.paperBorder}`, borderRadius: 8, padding: 14, marginBottom: 10 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{b.name}</div>
-                    <div style={{ fontSize: 13, color: PAL.ink }}><strong>Markets:</strong> {b.markets}</div>
-                    <div style={{ fontSize: 13, color: PAL.ink }}><strong>Max Price:</strong> {fmt(b.maxPrice)}</div>
-                    <div style={{ fontSize: 13, color: PAL.ink }}><strong>Types:</strong> {b.propertyTypes?.join(", ") || "All"}</div>
-                  </div>
-                ))}
+                <Field label="Description" value={dealForm.description} onChange={setDF("description")} placeholder="Title status, condition, motivation, anything a buyer needs to know" textarea />
+                <Field label="Your Contact Info" value={dealForm.contact} onChange={setDF("contact")} placeholder="Phone or email buyers can reach you at" />
               </div>
-            )}
-          </div>
+              <div style={{ background: PAL.goldTint, border: `1px solid ${PAL.gold}33`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12.5, color: PAL.gold, fontWeight: 600 }}>
+                Deals are reviewed manually before being marked "Verified." Yours will show as Pending until then. Listings auto-hide from the feed after 30 days.
+              </div>
+              <Btn primary disabled={!dealForm.wholesalerName || !dealForm.address || !dealForm.price} onClick={submitDeal} style={{ width: "100%", padding: "13px 0" }}>
+                {posted ? "✓ Deal Posted" : "Post Deal"}
+              </Btn>
+            </div>
+          </Gated>
         )}
 
-        {/* ADMIN PANEL VIEW */}
+        {/* MY BUY BOX — gated */}
+        {tab === "buybox" && (
+          <Gated contextLabel="set up your buy box">
+            <div>
+              <div style={{ color: PAL.muted, fontSize: 13.5, marginBottom: 20, lineHeight: 1.5 }}>
+                Set your criteria once. Deals that match your buy box will be flagged automatically in the feed.
+              </div>
+              <div style={{ display: "grid", gap: 14, marginBottom: 16 }}>
+                <Field label="Your Name / Company" value={buyerForm.name} onChange={setBF("name")} placeholder="Jane Smith Investments" />
+                <Field label="Markets You Buy In" value={buyerForm.markets} onChange={setBF("markets")} placeholder="Atlanta, 30309, GA — comma separated" />
+                <Field label="Max Purchase Price" value={buyerForm.maxPrice} onChange={setBF("maxPrice")} placeholder="150000" prefix="$" />
+                <div>
+                  <label style={labelBase}>Property Types</label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {PROPERTY_TYPES.map((t) => (
+                      <button key={t} onClick={() => togglePropType(t)} style={{
+                        padding: "7px 14px", borderRadius: 20, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                        border: `1px solid ${buyerForm.propertyTypes.includes(t) ? PAL.emerald : PAL.paperBorder}`,
+                        background: buyerForm.propertyTypes.includes(t) ? PAL.emeraldTint : "#fff",
+                        color: buyerForm.propertyTypes.includes(t) ? PAL.emeraldDark : PAL.muted,
+                      }}>{t}</button>
+                    ))}
+                  </div>
+                </div>
+                <Field label="Contact Info" value={buyerForm.contact} onChange={setBF("contact")} placeholder="Phone or email wholesalers can reach you at" />
+              </div>
+              <Btn primary disabled={!buyerForm.name || !buyerForm.markets} onClick={submitBuyer} style={{ width: "100%", padding: "13px 0" }}>
+                {profileSaved ? "✓ Buy Box Saved" : "Save Buy Box"}
+              </Btn>
+
+              {myBuyBoxes.length > 0 && (
+                <div style={{ marginTop: 28 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: PAL.muted, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>
+                    Your Active Buy Box Profile
+                  </div>
+                  {myBuyBoxes.map((b) => (
+                    <div key={b.id} style={{ background: PAL.paper, border: `1px solid ${PAL.paperBorder}`, borderRadius: 8, padding: 14, marginBottom: 10 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{b.name}</div>
+                      <div style={{ fontSize: 13, color: PAL.ink }}><strong>Markets:</strong> {b.markets}</div>
+                      <div style={{ fontSize: 13, color: PAL.ink }}><strong>Max Price:</strong> {fmt(b.maxPrice)}</div>
+                      <div style={{ fontSize: 13, color: PAL.ink }}><strong>Types:</strong> {b.propertyTypes?.join(", ") || "All"}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Gated>
+        )}
+
+        {/* ADMIN PANEL */}
         {isAdmin && tab === "admin" && (
           <div style={{ background: PAL.paper, border: `1px solid ${PAL.paperBorder}`, borderRadius: 10, padding: 20 }}>
             <h3 style={{ fontFamily: SERIF, marginTop: 0, marginBottom: 16 }}>Pending Verifications</h3>
-            {deals.filter(d => !d.verified).length === 0 ? (
+            {deals.filter((d) => !d.verified).length === 0 ? (
               <div style={{ color: PAL.muted, fontSize: 14 }}>All clean! No deals are currently pending review.</div>
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
-                {deals.filter(d => !d.verified).map(d => (
+                {deals.filter((d) => !d.verified).map((d) => (
                   <div key={d.id} style={{ background: "#fff", border: `1px solid ${PAL.paperBorder}`, borderRadius: 7, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 14 }}>{d.address}</div>
@@ -560,7 +578,6 @@ export default function App() {
             )}
           </div>
         )}
-
       </div>
     </div>
   );
