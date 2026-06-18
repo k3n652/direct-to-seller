@@ -17,18 +17,18 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 
 const PAL = {
-  bg: "#FFFFFF",
-  paper: "#F7F5EF",
-  paperBorder: "#E6E2D6",
-  ink: "#15201B",
-  muted: "#70766A",
+  bg: "#000000",
+  paper: "#121212",
+  paperBorder: "#262626",
+  ink: "#FFFFFF",
+  muted: "#A3A3A3",
   emerald: "#1F5C4D",
   emeraldDark: "#163F35",
-  emeraldTint: "#E9F1ED",
+  emeraldTint: "#1A2E26",
   gold: "#A8823F",
-  goldTint: "#F5EEDF",
+  goldTint: "#2C2519",
   brick: "#9C3B33",
-  brickTint: "#F6EAE8",
+  brickTint: "#2D1917",
 };
 
 const SERIF = "'Iowan Old Style', 'Source Serif Pro', Georgia, 'Times New Roman', serif";
