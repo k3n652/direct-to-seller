@@ -233,7 +233,7 @@ export default function App() {
               value={passInput} 
               onChange={(e) => {
                 setPassInput(e.target.value);
-                if (e.target.value === "admin123") { // CHANGE THIS PASSCODE TO WHATEVER YOU WANT
+                if (e.target.value === "apprehension") { // CHANGE THIS PASSCODE TO WHATEVER YOU WANT
                   setIsAdmin(true);
                   setPassInput("");
                 }
