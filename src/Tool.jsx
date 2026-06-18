@@ -229,7 +229,7 @@ export default function App() {
           {!isAdmin && (
             <input 
               type="password" 
-              placeholder="Admin pass" 
+              placeholder="Admin" 
               value={passInput} 
               onChange={(e) => {
                 setPassInput(e.target.value);
