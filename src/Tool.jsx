@@ -1,16 +1,22 @@
 import { useState, useEffect } from "react";
-import { collection, onSnapshot, query, orderBy, where, getDoc, doc, setDoc, updateDoc } from "firebase/firestore";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import {
+  collection, addDoc, onSnapshot, query, orderBy,
+  updateDoc, doc, where, getDoc, setDoc,
+} from "firebase/firestore";
+import {
+  signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  signInWithPopup, signOut, onAuthStateChanged,
+} from "firebase/auth";
+
 import { db, auth, googleProvider } from "./firebase";
 import { PAL, SERIF, SANS, THIRTY_DAYS_MS } from "./theme";
 import { Seal } from "./components/ui";
+import { Gated } from "./components/Auth";
 
-// Import your newly split files and components
 import BrowseTab from "./components/BrowseTab";
 import PostTab from "./components/PostTab";
 import BuyBoxTab from "./components/BuyBoxTab";
 import AdminTab from "./components/AdminTab";
-import { AuthInline, RoleSelect } from "./components/Auth";
 
 const EMPTY_DEAL = { wholesalerName: "", address: "", city: "", state: "", zip: "", price: "", arv: "", repairs: "", propertyType: "Single Family", description: "", contact: "" };
 const EMPTY_BUYER = { name: "", markets: "", maxPrice: "", propertyTypes: [], contact: "" };
@@ -27,10 +33,10 @@ export default function App() {
 
   const [tab, setTab] = useState("browse");
   const [deals, setDeals] = useState([]);
-  const [buyers, setBuyers] = useState([]); 
-  const [myBuyBoxes, setMyBuyBoxes] = useState([]); 
+  const [buyers, setBuyers] = useState([]); // ALL buyers — used for match counts in Browse
+  const [myBuyBoxes, setMyBuyBoxes] = useState([]); // just the logged-in user's own buy boxes
   const [loading, setLoading] = useState(true);
-  
+
   const [dealForm, setDealForm] = useState(EMPTY_DEAL);
   const [buyerForm, setBuyerForm] = useState(EMPTY_BUYER);
   const [posted, setPosted] = useState(false);
@@ -60,7 +66,7 @@ export default function App() {
     return () => unsubAuth();
   }, []);
 
-  // Global feeds snapshot
+  // Global feeds — load regardless of login, browsing is open to everyone
   useEffect(() => {
     document.body.style.margin = "0";
     document.body.style.background = PAL.bg;
@@ -79,7 +85,7 @@ export default function App() {
     return () => { unsubDeals(); unsubBuyers(); };
   }, []);
 
-  // Sync user's personal buy boxes
+  // Your own buy boxes — only needed once logged in
   useEffect(() => {
     if (!user) { setMyBuyBoxes([]); return; }
     const myQuery = query(collection(db, "buyers"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
@@ -88,6 +94,34 @@ export default function App() {
     });
     return () => unsub();
   }, [user]);
+
+  const submitDeal = async () => {
+    if (!user || !dealForm.wholesalerName || !dealForm.address || !dealForm.price) return;
+    await addDoc(collection(db, "deals"), {
+      ...dealForm, userId: user.uid, postedDate: new Date().toLocaleDateString(), verified: false, createdAt: Date.now(),
+    });
+    setDealForm(EMPTY_DEAL);
+    setPosted(true);
+    setTimeout(() => setPosted(false), 2500);
+  };
+
+  const submitBuyer = async () => {
+    if (!user || !buyerForm.name || !buyerForm.markets) return;
+    await addDoc(collection(db, "buyers"), {
+      ...buyerForm, userId: user.uid, postedDate: new Date().toLocaleDateString(), createdAt: Date.now(),
+    });
+    setBuyerForm(EMPTY_BUYER);
+    setProfileSaved(true);
+    setTimeout(() => setProfileSaved(false), 2500);
+  };
+
+  const togglePropType = (t) => setBuyerForm((p) => ({
+    ...p, propertyTypes: p.propertyTypes.includes(t) ? p.propertyTypes.filter((x) => x !== t) : [...p.propertyTypes, t],
+  }));
+
+  const toggleVerifyDeal = async (id, currentStatus) => {
+    await updateDoc(doc(db, "deals", id), { verified: !currentStatus });
+  };
 
   const saveRole = async (role) => {
     if (!user) return;
@@ -100,8 +134,24 @@ export default function App() {
     }
   };
 
-  const toggleVerifyDeal = async (id, currentStatus) => {
-    await updateDoc(doc(db, "deals", id), { verified: !currentStatus });
+  const handleEmailAuth = async (e) => {
+    e.preventDefault();
+    setAuthError("");
+    try {
+      if (authMode === "login") await signInWithEmailAndPassword(auth, email, password);
+      else await createUserWithEmailAndPassword(auth, email, password);
+    } catch (err) {
+      setAuthError(err.message.replace("Firebase: ", ""));
+    }
+  };
+
+  const handleGoogleAuth = async () => {
+    setAuthError("");
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (err) {
+      setAuthError(err.message.replace("Firebase: ", ""));
+    }
   };
 
   // Filter logic including the 30-day auto-hide feature
@@ -121,35 +171,6 @@ export default function App() {
       fontWeight: 700, fontSize: 14, fontFamily: SANS, transition: "all 0.15s",
     }}>{label}</button>
   );
-
-  // Authentication & Onboarding Gatekeeper Component
-  const Gated = ({ children }) => {
-    if (authLoading) return <div style={{ color: PAL.muted, textAlign: "center", padding: 40 }}>Checking session…</div>;
-    if (!user) {
-      return (
-        <AuthInline
-          authMode={authMode} setAuthMode={setAuthMode}
-          email={email} setEmail={setEmail}
-          password={password} setPassword={setPassword}
-          authError={authError}
-          onSubmit={async (e) => {
-            e.preventDefault(); setAuthError("");
-            try {
-              if (authMode === "login") await signInWithEmailAndPassword(auth, email, password);
-              else await createUserWithEmailAndPassword(auth, email, password);
-            } catch (err) { setAuthError(err.message.replace("Firebase: ", "")); }
-          }}
-          onGoogle={async () => {
-            setAuthError("");
-            try { await signInWithPopup(auth, googleProvider); } 
-            catch (err) { setAuthError(err.message.replace("Firebase: ", "")); }
-          }}
-        />
-      );
-    }
-    if (!userRole) return <RoleSelect onSelect={saveRole} saving={roleSaving} />;
-    return children;
-  };
 
   return (
     <div style={{ background: PAL.bg, minHeight: "100vh", fontFamily: SANS, color: PAL.ink }}>
@@ -191,24 +212,44 @@ export default function App() {
           {isAdmin && <TabBtn id="admin" label="🛡️ Admin Panel" />}
         </div>
 
-        {/* Modular Tab Content Container Engine */}
+        {/* Tab content */}
         {tab === "browse" && (
-          <BrowseTab 
+          <BrowseTab
             filteredDeals={filteredDeals} loading={loading} buyers={buyers} myBuyBoxes={myBuyBoxes}
             userRole={userRole} isAdmin={isAdmin} toggleVerifyDeal={toggleVerifyDeal}
             filters={filters} setFilters={setFilters} revealedContact={revealedContact} setRevealedContact={setRevealedContact}
           />
         )}
+
         {tab === "post" && (
-          <Gated>
-            <PostTab dealForm={dealForm} setDealForm={setDealForm} user={user} posted={posted} setPosted={setPosted} EMPTY_DEAL={EMPTY_DEAL} />
+          <Gated
+            contextLabel="post a deal"
+            authLoading={authLoading} user={user} userRole={userRole}
+            authMode={authMode} setAuthMode={setAuthMode}
+            email={email} setEmail={setEmail} password={password} setPassword={setPassword}
+            authError={authError} onSubmit={handleEmailAuth} onGoogle={handleGoogleAuth}
+            onSelectRole={saveRole} roleSaving={roleSaving}
+          >
+            <PostTab dealForm={dealForm} setDealForm={setDealForm} submitDeal={submitDeal} posted={posted} />
           </Gated>
         )}
+
         {tab === "buybox" && (
-          <Gated>
-            <BuyBoxTab buyerForm={buyerForm} setBuyerForm={setBuyerForm} user={user} profileSaved={profileSaved} setProfileSaved={setProfileSaved} myBuyBoxes={myBuyBoxes} EMPTY_BUYER={EMPTY_BUYER} />
+          <Gated
+            contextLabel="set up your buy box"
+            authLoading={authLoading} user={user} userRole={userRole}
+            authMode={authMode} setAuthMode={setAuthMode}
+            email={email} setEmail={setEmail} password={password} setPassword={setPassword}
+            authError={authError} onSubmit={handleEmailAuth} onGoogle={handleGoogleAuth}
+            onSelectRole={saveRole} roleSaving={roleSaving}
+          >
+            <BuyBoxTab
+              buyerForm={buyerForm} setBuyerForm={setBuyerForm} togglePropType={togglePropType}
+              submitBuyer={submitBuyer} profileSaved={profileSaved} buyers={myBuyBoxes}
+            />
           </Gated>
         )}
+
         {tab === "admin" && isAdmin && (
           <AdminTab deals={deals} toggleVerifyDeal={toggleVerifyDeal} />
         )}
