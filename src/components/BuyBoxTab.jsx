@@ -1,4 +1,3 @@
-import React from "react";
 import { PAL, fmt, SANS } from "../theme";
 import { Field, Btn } from "./ui";
 
@@ -14,7 +13,7 @@ export default function BuyBoxTab({ buyerForm, setBuyerForm, togglePropType, sub
       </div>
       <div style={{ display: "grid", gap: 14, marginBottom: 16 }}>
         <Field label="Your Name / Company" value={buyerForm.name} onChange={setBF("name")} placeholder="Jane Smith Investments" />
-        <Field label="Markets You Buy In" value={buyerForm.markets} onChange={setBF("markets")} placeholder="Atlanta, 30309, GA — comma separated" />
+        <Field label="Markets You Buy In" value={buyerForm.markets} onChange={setBF("markets")} placeholder="Atlanta, GA; Dallas, TX; 30309 — separate markets with semicolons" />
         <Field label="Max Purchase Price" value={buyerForm.maxPrice} onChange={setBF("maxPrice")} placeholder="150000" prefix="$" />
         <div>
           <label style={{ color: PAL.muted, fontSize: 11, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 6, display: "block", fontFamily: SANS }}>Property Types</label>
