@@ -51,10 +51,15 @@ export default function BrowseTab({
 
                 {d.description && <div style={{ fontSize: 13.5, color: PAL.ink, marginBottom: 12, lineHeight: 1.5 }}>{d.description}</div>}
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ fontSize: 12, color: PAL.emeraldDark, fontWeight: 700 }}>
-                    {matches > 0 ? `${matches} buyer${matches > 1 ? "s" : ""} in your network match this` : "Posted " + d.postedDate}
-                  </div>
+                <div style={{ fontSize: 12, color: PAL.emeraldDark, fontWeight: 700 }}>
+  {userRole === "buyer" ? (
+    // If the logged-in user is a buyer, see if their profile matches this deal
+    myBuyBoxes.some(b => matchCount(d, [b]) > 0) ? "✨ Matches your Buy Box" : "Posted " + d.postedDate
+  ) : (
+    // If they are a wholesaler, show them how many buyers in the network match it
+    matches > 0 ? `${matches} buyer${matches > 1 ? "s" : ""} in your network match this` : "Posted " + d.postedDate
+  )}
+</div>
                   <div style={{ display: "flex", gap: 8 }}>
                     {isAdmin && (
                       <Btn onClick={() => toggleVerifyDeal(d.id, d.verified)} style={{ borderColor: d.verified ? PAL.brick : PAL.emerald, color: d.verified ? PAL.brick : PAL.emerald }}>
