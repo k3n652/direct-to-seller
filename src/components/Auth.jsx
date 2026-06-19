@@ -62,3 +62,30 @@ export function RoleSelect({ onSelect, saving }) {
     </div>
   );
 }
+
+// IMPORTANT: defined here at module level, not inside App(), so it never gets
+// recreated as a "new" component type on every render. If this lived inside
+// App(), React would unmount/remount everything inside it (including form
+// inputs) on every keystroke, which is exactly the bug this fixes.
+export function Gated({
+  contextLabel, authLoading, user, userRole,
+  authMode, setAuthMode, email, setEmail, password, setPassword, authError,
+  onSubmit, onGoogle, onSelectRole, roleSaving, children,
+}) {
+  if (authLoading) return <div style={{ color: PAL.muted, textAlign: "center", padding: 40 }}>Checking session…</div>;
+  if (!user) {
+    return (
+      <AuthInline
+        contextLabel={contextLabel}
+        authMode={authMode} setAuthMode={setAuthMode}
+        email={email} setEmail={setEmail}
+        password={password} setPassword={setPassword}
+        authError={authError}
+        onSubmit={onSubmit}
+        onGoogle={onGoogle}
+      />
+    );
+  }
+  if (!userRole) return <RoleSelect onSelect={onSelectRole} saving={roleSaving} />;
+  return children;
+}
