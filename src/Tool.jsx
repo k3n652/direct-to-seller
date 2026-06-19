@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { collection, onSnapshot, query, orderBy, where, getDoc, doc, setDoc, updateDoc } from "firebase/firestore";
-import { signOut, onAuthStateChanged } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { db, auth, googleProvider } from "./firebase";
 import { PAL, SERIF, SANS, THIRTY_DAYS_MS } from "./theme";
 import { Seal } from "./components/ui";
