@@ -16,7 +16,16 @@ export default function AdminTab({ deals, toggleVerifyDeal }) {
             <div key={d.id} style={{ background: "#fff", border: `1px solid ${PAL.paperBorder}`, borderRadius: 7, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{d.address}</div>
-                <div style={{ fontSize: 12, color: PAL.muted }}>{d.city}, {d.state} · {fmt(d.price)}</div>
+                <div style={{ fontSize: 12, color: PAL.muted, marginBottom: 4 }}>
+                  {d.city}, {d.state} · {fmt(d.price)}
+                </div>
+                {d.contractLink ? (
+                  <a href={d.contractLink} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: PAL.emerald, fontWeight: 700, textDecoration: "underline" }}>
+                    View Contract Proof ↗
+                  </a>
+                ) : (
+                  <span style={{ fontSize: 12, color: PAL.brick, fontWeight: 700 }}>No Contract Provided</span>
+                )}
               </div>
               <Btn primary onClick={() => toggleVerifyDeal(d.id, d.verified)} style={{ padding: "6px 12px", fontSize: 12 }}>
                 Approve
