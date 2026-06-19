@@ -146,7 +146,7 @@ export default function Landing() {
           </div>
 
           <iframe
-            data-tally-src="https://tally.so/r/5BODXd?transparentBackground=1"
+            src="https://tally.so/r/5BODXd?transparentBackground=1"
             width="100%"
             height="220"
             frameBorder="0"
