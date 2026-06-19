@@ -2,7 +2,7 @@ import { PAL, SERIF, fmt, PROPERTY_TYPES, matchCount } from "../theme";
 import { Seal, Field, Select, Btn } from "./ui";
 
 export default function BrowseTab({
-  filters, setFilters, loading, filteredDeals, buyers,
+  filters, setFilters, loading, filteredDeals, buyers, myBuyBoxes, userRole,
   isAdmin, toggleVerifyDeal, revealedContact, setRevealedContact,
 }) {
   return (
@@ -24,6 +24,8 @@ export default function BrowseTab({
           {filteredDeals.map((d) => {
             const margin = (Number(d.arv) || 0) - (Number(d.price) || 0) - (Number(d.repairs) || 0);
             const matches = matchCount(d, buyers);
+            const isBuyerMatch = userRole === "buyer" && myBuyBoxes.some((b) => matchCount(d, [b]) > 0);
+
             return (
               <div key={d.id} style={{ background: PAL.paper, border: `1px solid ${PAL.paperBorder}`, borderRadius: 10, padding: 18 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
@@ -40,6 +42,12 @@ export default function BrowseTab({
                   </div>
                 </div>
 
+                {isBuyerMatch && (
+                  <div style={{ display: "inline-block", background: PAL.emeraldTint, color: PAL.emerald, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, marginBottom: 10 }}>
+                    ✨ Matches your Buy Box
+                  </div>
+                )}
+
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
                   {[["Price", fmt(d.price)], ["ARV", fmt(d.arv)], ["Repairs", fmt(d.repairs)], ["Est. Margin", fmt(margin)]].map(([l, v]) => (
                     <div key={l} style={{ background: "#fff", border: `1px solid ${PAL.paperBorder}`, borderRadius: 7, padding: "8px 10px" }}>
@@ -51,15 +59,12 @@ export default function BrowseTab({
 
                 {d.description && <div style={{ fontSize: 13.5, color: PAL.ink, marginBottom: 12, lineHeight: 1.5 }}>{d.description}</div>}
 
-                <div style={{ fontSize: 12, color: PAL.emeraldDark, fontWeight: 700 }}>
-  {userRole === "buyer" ? (
-    // If the logged-in user is a buyer, see if their profile matches this deal
-    myBuyBoxes.some(b => matchCount(d, [b]) > 0) ? "✨ Matches your Buy Box" : "Posted " + d.postedDate
-  ) : (
-    // If they are a wholesaler, show them how many buyers in the network match it
-    matches > 0 ? `${matches} buyer${matches > 1 ? "s" : ""} in your network match this` : "Posted " + d.postedDate
-  )}
-</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontSize: 12, color: PAL.emeraldDark, fontWeight: 700 }}>
+                    {userRole === "buyer"
+                      ? (isBuyerMatch ? "Matches your Buy Box" : "Posted " + d.postedDate)
+                      : (matches > 0 ? `${matches} buyer${matches > 1 ? "s" : ""} in your network match this` : "Posted " + d.postedDate)}
+                  </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     {isAdmin && (
                       <Btn onClick={() => toggleVerifyDeal(d.id, d.verified)} style={{ borderColor: d.verified ? PAL.brick : PAL.emerald, color: d.verified ? PAL.brick : PAL.emerald }}>
