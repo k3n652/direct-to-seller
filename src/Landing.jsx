@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 const PAL = {
   bg: "#FFFFFF",
   paper: "#F7F5EF",
@@ -73,9 +71,6 @@ const FEATURES = [
 ];
 
 export default function Landing() {
-  const [email, setEmail] = useState("");
-  const [joined, setJoined] = useState(false);
-
   return (
     <div style={{ background: PAL.bg, minHeight: "100vh", fontFamily: SANS, color: PAL.ink }}>
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "56px 24px 80px" }}>
@@ -150,25 +145,16 @@ export default function Landing() {
             We're letting in a small group of wholesalers and buyers first. Join the list to get in early.
           </div>
 
-          {joined ? (
-            <div style={{ color: "#fff", fontWeight: 700, fontSize: 14.5 }}>✓ You're on the list — we'll be in touch.</div>
-          ) : (
-            <div style={{ display: "flex", gap: 8, maxWidth: 380, margin: "0 auto" }}>
-              <input
-                type="email"
-                placeholder="you@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={{ flex: 1, padding: "11px 14px", borderRadius: 8, border: "none", fontSize: 14, outline: "none", fontFamily: SANS }}
-              />
-              <button
-                onClick={() => email.includes("@") && setJoined(true)}
-                style={{ padding: "11px 18px", borderRadius: 8, border: "none", background: PAL.gold, color: "#fff", fontWeight: 700, fontSize: 13.5, cursor: "pointer", whiteSpace: "nowrap" }}
-              >
-                Join Waitlist
-              </button>
-            </div>
-          )}
+          <iframe
+            data-tally-src="https://tally.so/r/5BODXd?transparentBackground=1"
+            width="100%"
+            height="220"
+            frameBorder="0"
+            marginHeight="0"
+            marginWidth="0"
+            title="Waitlist"
+            style={{ borderRadius: 8 }}
+          />
         </div>
 
         <div style={{ textAlign: "center", color: PAL.muted, fontSize: 12, marginTop: 28 }}>
