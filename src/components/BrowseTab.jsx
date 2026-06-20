@@ -1,11 +1,8 @@
-import React from "react";
-import { PAL, fmt, matchCount } from "../theme";
-import { Field, Select, Btn } from "./ui";
-
-const PROPERTY_TYPES = ["Single Family", "Multifamily", "Land", "Townhome/Condo", "Mixed Use"];
+import { PAL, fmt, PROPERTY_TYPES, matchCount } from "../theme";
+import { Seal, Field, Select, Btn } from "./ui";
 
 export default function BrowseTab({
-  filters, setFilters, loading, filteredDeals, buyers = [], myBuyBoxes = [], userRole,
+  filters, setFilters, loading, filteredDeals, buyers, myBuyBoxes, userRole,
   isAdmin, toggleVerifyDeal, revealedContact, setRevealedContact,
 }) {
   return (
@@ -17,103 +14,86 @@ export default function BrowseTab({
       </div>
 
       {loading ? (
-        <div style={{ color: PAL?.muted || "#888", textAlign: "center", padding: 50 }}>Loading deals…</div>
+        <div style={{ color: PAL.muted, textAlign: "center", padding: 50 }}>Loading deals…</div>
       ) : filteredDeals.length === 0 ? (
-        <div style={{ background: PAL?.paper || "#f9fafb", border: `1px solid ${PAL?.paperBorder || "#e5e7eb"}`, borderRadius: 10, padding: 36, textAlign: "center", color: PAL?.muted || "#888", fontSize: 14 }}>
+        <div style={{ background: PAL.paper, border: `1px solid ${PAL.paperBorder}`, borderRadius: 12, padding: 36, textAlign: "center", color: PAL.muted, fontSize: 14 }}>
           No deals match yet. Be the first — post one from the "Post a Deal" tab.
         </div>
       ) : (
-        <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gap: 14 }}>
           {filteredDeals.map((d) => {
-            const priceNum = Number(d.price) || 0;
-            const arvNum = Number(d.arv) || 0;
-            const repairsNum = Number(d.repairs) || 0;
-            const margin = arvNum - priceNum - repairsNum;
-            const totalInvested = priceNum + repairsNum;
-            const arvRatio = arvNum > 0 ? Math.round((totalInvested / arvNum) * 100) : 0;
-            
+            const margin = (Number(d.arv) || 0) - (Number(d.price) || 0) - (Number(d.repairs) || 0);
             const matches = matchCount(d, buyers);
             const isBuyerMatch = userRole === "buyer" && myBuyBoxes.some((b) => matchCount(d, [b]) > 0);
 
             return (
-              <div key={d.id} style={{ background: "#fff", border: `1px solid ${PAL?.paperBorder || "#e5e7eb"}`, borderRadius: 10, overflow: "hidden" }}>
-                
-                <div style={{ height: 180, background: PAL?.paper || "#f9fafb", position: "relative", borderBottom: `1px solid ${PAL?.paperBorder || "#e5e7eb"}` }}>
-                  {d.photoLink && (d.photoLink.includes(".jpg") || d.photoLink.includes(".png") || d.photoLink.includes(".jpeg")) ? (
-                     <img src={d.photoLink} alt="Property" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  ) : (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: PAL?.muted || "#888", fontSize: 13, flexDirection: "column", gap: 6 }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                      {d.photoLink ? <a href={d.photoLink} target="_blank" rel="noreferrer" style={{ color: PAL?.emerald || "#10b981", textDecoration: "underline" }}>View External Photos</a> : "No Photos Available"}
+              <div key={d.id} style={{ background: "#fff", border: `1px solid ${PAL.paperBorder}`, borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }}>
+
+                {/* Photo */}
+                <div style={{
+                  position: "relative", width: "100%", height: 170,
+                  backgroundColor: PAL.paper,
+                  backgroundImage: d.photoUrl ? `url("${d.photoUrl}")` : "none",
+                  backgroundSize: "cover", backgroundPosition: "center",
+                }}>
+                  {!d.photoUrl && (
+                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: PAL.muted, fontSize: 12, fontWeight: 600 }}>
+                      No photo provided
                     </div>
                   )}
-
-                  <div style={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 6 }}>
-                    <span style={{ background: d.verified ? (PAL?.emerald || "#10b981") : (PAL?.gold || "#f59e0b"), color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  <div style={{ position: "absolute", top: 10, right: 10, display: "flex", alignItems: "center", gap: 6, background: "#fff", padding: "4px 10px 4px 4px", borderRadius: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}>
+                    <Seal size={18} status={d.verified ? "verified" : "pending"} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: d.verified ? PAL.emerald : PAL.gold }}>
                       {d.verified ? "Verified" : "Pending"}
                     </span>
-                    {arvRatio > 0 && arvRatio < 100 && (
-                      <span style={{ background: PAL?.ink || "#111827", color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 11, fontWeight: 700 }}>
-                        {arvRatio}%
-                      </span>
-                    )}
                   </div>
+                  {isBuyerMatch && (
+                    <div style={{ position: "absolute", top: 10, left: 10, background: PAL.emerald, color: "#fff", fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 20 }}>
+                      ✨ Matches your Buy Box
+                    </div>
+                  )}
                 </div>
 
-                <div style={{ padding: 14 }}>
+                {/* Content */}
+                <div style={{ padding: 16 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: PAL?.ink || "#111827", letterSpacing: "-0.02em" }}>{fmt ? fmt(priceNum) : `$${priceNum}`}</div>
-                    <div style={{ fontSize: 14, color: PAL?.muted || "#888", fontWeight: 600 }}>(ARV - {fmt ? fmt(arvNum) : `$${arvNum}`})</div>
+                    <span style={{ fontSize: 22, fontWeight: 800, color: PAL.ink }}>{fmt(d.price)}</span>
+                    <span style={{ fontSize: 13, color: PAL.muted, fontWeight: 600 }}>(ARV {fmt(d.arv)})</span>
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: 15.5, marginBottom: 2 }}>{d.address}</div>
+                  <div style={{ color: PAL.muted, fontSize: 12.5, marginBottom: 4 }}>{[d.city, d.state, d.zip].filter(Boolean).join(", ")} · {d.propertyType}</div>
+                  <div style={{ color: PAL.emeraldDark, fontSize: 12, fontWeight: 600, marginBottom: 12 }}>Posted by {d.wholesalerName || "Unknown"}</div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+                    {[["Est. Repairs", fmt(d.repairs)], ["Est. Margin", fmt(margin)]].map(([l, v]) => (
+                      <div key={l} style={{ background: PAL.paper, border: `1px solid ${PAL.paperBorder}`, borderRadius: 8, padding: "8px 10px" }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: PAL.muted, textTransform: "uppercase", marginBottom: 2 }}>{l}</div>
+                        <div style={{ fontWeight: 700, fontSize: 13 }}>{v}</div>
+                      </div>
+                    ))}
                   </div>
 
-                  <div style={{ fontSize: 14, color: PAL?.ink || "#111827", marginBottom: 12 }}>
-                    {[d.address, d.city, d.state, d.zip].filter(Boolean).join(", ")}
-                  </div>
+                  {d.description && <div style={{ fontSize: 13.5, color: PAL.ink, marginBottom: 12, lineHeight: 1.5 }}>{d.description}</div>}
 
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 13, color: PAL?.ink || "#111827", fontWeight: 500, marginBottom: 14 }}>
-                    {d.beds && <span style={{ display: "flex", alignItems: "center", gap: 4 }}>🛏 {d.beds} Beds</span>}
-                    {d.baths && <span style={{ display: "flex", alignItems: "center", gap: 4 }}>🚿 {d.baths} Baths</span>}
-                    {d.sqft && <span style={{ display: "flex", alignItems: "center", gap: 4 }}>📏 {d.sqft} sq.ft</span>}
-                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}>🏠 {d.propertyType}</span>
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14, background: PAL?.paper || "#f9fafb", padding: 10, borderRadius: 6, border: `1px solid ${PAL?.paperBorder || "#e5e7eb"}` }}>
-                    <div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: PAL?.muted || "#888", textTransform: "uppercase" }}>Est. Repairs</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: PAL?.ink || "#111827" }}>{fmt ? fmt(repairsNum) : `$${repairsNum}`}</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontSize: 12, color: PAL.emeraldDark, fontWeight: 700 }}>
+                      {userRole === "buyer"
+                        ? (isBuyerMatch ? "✨ Matches your Buy Box" : "Posted " + d.postedDate)
+                        : (matches > 0 ? `${matches} buyer${matches > 1 ? "s" : ""} in your network match this` : "Posted " + d.postedDate)}
                     </div>
-                    <div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: PAL?.muted || "#888", textTransform: "uppercase" }}>Est. Margin</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: PAL?.emeraldDark || "#047857" }}>{fmt ? fmt(margin) : `$${margin}`}</div>
-                    </div>
-                  </div>
-
-                  {d.description && <div style={{ fontSize: 13, color: PAL?.muted || "#888", marginBottom: 14, lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{d.description}</div>}
-
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 14, borderTop: `1px solid ${PAL?.paperBorder || "#e5e7eb"}` }}>
-                    
-                    <div style={{ fontSize: 12, fontWeight: 700, color: isBuyerMatch ? (PAL?.emerald || "#10b981") : (PAL?.muted || "#888") }}>
-                      {isBuyerMatch 
-                        ? "✓ Matches Buy Box" 
-                        : userRole === "wholesaler" 
-                          ? `${matches} Buyers Match This`
-                          : `Posted by ${d.wholesalerName || "Unknown"}`
-                      }
-                    </div>
-                    
                     <div style={{ display: "flex", gap: 8 }}>
                       {isAdmin && (
-                        <Btn onClick={() => toggleVerifyDeal(d.id, d.verified)} style={{ padding: "6px 12px", fontSize: 12, borderColor: d.verified ? (PAL?.brick || "#ef4444") : (PAL?.emerald || "#10b981"), color: d.verified ? (PAL?.brick || "#ef4444") : (PAL?.emerald || "#10b981") }}>
-                          {d.verified ? "Unverify" : "Verify"}
+                        <Btn onClick={() => toggleVerifyDeal(d.id, d.verified)} style={{ borderColor: d.verified ? PAL.brick : PAL.emerald, color: d.verified ? PAL.brick : PAL.emerald }}>
+                          {d.verified ? "Unverify" : "Approve Verification"}
                         </Btn>
                       )}
                       {revealedContact === d.id ? (
-                        <div style={{ fontSize: 13, fontWeight: 700, color: PAL?.ink || "#111827", background: PAL?.paper || "#f9fafb", border: `1px solid ${PAL?.paperBorder || "#e5e7eb"}`, padding: "6px 12px", borderRadius: 7 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: PAL.ink, background: PAL.paper, border: `1px solid ${PAL.paperBorder}`, padding: "6px 12px", borderRadius: 8 }}>
                           {d.contact}
                         </div>
                       ) : (
-                        <Btn primary onClick={() => setRevealedContact(d.id)} style={{ padding: "8px 16px", fontSize: 12.5 }}>
-                          Contact
+                        <Btn primary onClick={() => setRevealedContact(d.id)} style={{ padding: "8px 14px", fontSize: 12.5 }}>
+                          Contact Wholesaler
                         </Btn>
                       )}
                     </div>
