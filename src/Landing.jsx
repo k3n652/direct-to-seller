@@ -1,33 +1,25 @@
 const PAL = {
   bg: "#FFFFFF",
-  paper: "#F7F5EF",
-  paperBorder: "#E6E2D6",
-  ink: "#15201B",
-  muted: "#70766A",
-  emerald: "#1F5C4D",
-  emeraldDark: "#163F35",
-  emeraldTint: "#E9F1ED",
-  gold: "#A8823F",
-  goldTint: "#F5EEDF",
+  paper: "#F8F9FC",
+  paperBorder: "#E3E6EC",
+  ink: "#0F172A",
+  muted: "#64748B",
+  emerald: "#2554EB",
+  emeraldDark: "#1741B8",
+  emeraldTint: "#EAF0FF",
+  gold: "#D97706",
+  goldTint: "#FEF3E2",
 };
 
-const SERIF = "'Iowan Old Style', 'Source Serif Pro', Georgia, 'Times New Roman', serif";
 const SANS = "'Inter', -apple-system, system-ui, sans-serif";
+const SERIF = SANS;
 
 function Seal({ size = 40, status = "verified", color }) {
   const c = color || (status === "verified" ? PAL.emerald : PAL.gold);
   return (
-    <svg width={size} height={size} viewBox="0 0 56 56" style={{ flexShrink: 0 }}>
-      <circle cx="28" cy="28" r="25" fill="none" stroke={c} strokeWidth="2" />
-      <circle cx="28" cy="28" r="19" fill="none" stroke={c} strokeWidth="1" strokeDasharray="2 3.2" />
-      {status === "verified" ? (
-        <path d="M17 28.5l7 7 15-15" fill="none" stroke={c} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      ) : (
-        <g stroke={c} strokeWidth="2.4" strokeLinecap="round">
-          <line x1="28" y1="28" x2="28" y2="17" />
-          <line x1="28" y1="28" x2="35" y2="32" />
-        </g>
-      )}
+    <svg width={size} height={size} viewBox="0 0 32 32" style={{ flexShrink: 0 }}>
+      <circle cx="16" cy="16" r="16" fill={c} />
+      <path d="M9.5 16.5l4 4 9-9" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -146,7 +138,7 @@ export default function Landing() {
           </div>
 
           <iframe
-            src="https://tally.so/r/5BODXd?transparentBackground=1"
+            src="https://tally.so/r/5BODXd?"
             width="100%"
             height="220"
             frameBorder="0"
