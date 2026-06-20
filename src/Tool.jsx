@@ -58,14 +58,15 @@ export default function Tool({ user, authLoading, userRole, profileData, deals, 
 
   const handleSignOut = () => signOut(auth);
 
-  // Now safe because we verified deals exists above
-  const filteredDeals = deals.filter(d => {
-    if (!isAdmin && !d.verified) return false;
-    if (filters.state && d.state.toLowerCase() !== filters.state.toLowerCase()) return false;
-    if (filters.maxPrice && Number(d.price) > Number(filters.maxPrice)) return false;
-    if (filters.propertyType !== "All" && d.propertyType !== filters.propertyType) return false;
-    return true;
-  });
+  // Change this logic in Tool.jsx
+const filteredDeals = (deals || []).filter(d => {
+  if (!d) return false; // Safety check for individual items
+  if (!isAdmin && !d.verified) return false;
+  if (filters.state && d.state?.toLowerCase() !== filters.state.toLowerCase()) return false;
+  if (filters.maxPrice && Number(d.price) > Number(filters.maxPrice)) return false;
+  if (filters.propertyType !== "All" && d.propertyType !== filters.propertyType) return false;
+  return true;
+});
 
   const TabBtn = ({ id, label }) => (
     <button onClick={() => setTab(id)} style={{
