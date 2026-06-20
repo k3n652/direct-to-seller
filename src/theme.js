@@ -1,11 +1,14 @@
 export const PAL = {
-  bg: "#FFFFFF", paper: "#F7F5EF", paperBorder: "#E6E2D6", ink: "#15201B",
-  muted: "#70766A", emerald: "#1F5C4D", emeraldDark: "#163F35", emeraldTint: "#E9F1ED",
-  gold: "#A8823F", goldTint: "#F5EEDF", brick: "#9C3B33", brickTint: "#F6EAE8",
+  bg: "#FFFFFF", paper: "#F8F9FC", paperBorder: "#E3E6EC", ink: "#0F172A",
+  muted: "#64748B", emerald: "#2554EB", emeraldDark: "#1741B8", emeraldTint: "#EAF0FF",
+  gold: "#D97706", goldTint: "#FEF3E2", brick: "#DC2626", brickTint: "#FEE9E7",
 };
 
-export const SERIF = "'Iowan Old Style', 'Source Serif Pro', Georgia, 'Times New Roman', serif";
+// Kept as a separate export name so every file that imports SERIF for headings
+// didn't need to be touched individually — this single line removes the
+// "editorial/blog" serif look from the whole app at once.
 export const SANS = "'Inter', -apple-system, system-ui, sans-serif";
+export const SERIF = SANS;
 
 export const fmt = (n) => !n || isNaN(n) ? "—" : "$" + Number(n).toLocaleString("en-US", { maximumFractionDigits: 0 });
 
