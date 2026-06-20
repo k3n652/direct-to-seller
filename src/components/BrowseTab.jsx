@@ -1,4 +1,5 @@
-import { PAL, SERIF, fmt, PROPERTY_TYPES, matchCount } from "../theme";
+import React from "react";
+import { PAL, PROPERTY_TYPES, fmt, matchCount } from "../theme";
 import { Field, Select, Btn } from "./ui";
 
 export default function BrowseTab({
@@ -26,15 +27,99 @@ export default function BrowseTab({
             const arvNum = Number(d.arv) || 0;
             const repairsNum = Number(d.repairs) || 0;
             const margin = arvNum - priceNum - repairsNum;
-            
             const totalInvested = priceNum + repairsNum;
             const arvRatio = arvNum > 0 ? Math.round((totalInvested / arvNum) * 100) : 0;
-            
-            const matches = matchCount(d, buyers);
             const isBuyerMatch = userRole === "buyer" && myBuyBoxes.some((b) => matchCount(d, [b]) > 0);
 
             return (
               <div key={d.id} style={{ background: "#fff", border: `1px solid ${PAL.paperBorder}`, borderRadius: 10, overflow: "hidden" }}>
+                
+                {/* Hero Image Section */}
+                <div style={{ height: 180, background: PAL.paper, position: "relative", borderBottom: `1px solid ${PAL.paperBorder}` }}>
+                  {d.photoLink && (d.photoLink.includes(".jpg") || d.photoLink.includes(".png") || d.photoLink.includes(".jpeg")) ? (
+                     <img src={d.photoLink} alt="Property" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: PAL.muted, fontSize: 13, flexDirection: "column", gap: 6 }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                      {d.photoLink ? <a href={d.photoLink} target="_blank" rel="noreferrer" style={{ color: PAL.emerald, textDecoration: "underline" }}>View External Photos</a> : "No Photos Available"}
+                    </div>
+                  )}
+
+                  {/* Badges Overlay */}
+                  <div style={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 6 }}>
+                    <span style={{ background: d.verified ? PAL.emerald : PAL.gold, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      {d.verified ? "Verified" : "Pending"}
+                    </span>
+                    {arvRatio > 0 && arvRatio < 100 && (
+                      <span style={{ background: PAL.ink, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 11, fontWeight: 700 }}>
+                        {arvRatio}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Data Section */}
+                <div style={{ padding: 14 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: PAL.ink, letterSpacing: "-0.02em" }}>{fmt(priceNum)}</div>
+                    <div style={{ fontSize: 14, color: PAL.muted, fontWeight: 600 }}>(ARV - {fmt(arvNum)})</div>
+                  </div>
+
+                  <div style={{ fontSize: 14, color: PAL.ink, marginBottom: 12 }}>
+                    {[d.address, d.city, d.state, d.zip].filter(Boolean).join(", ")}
+                  </div>
+
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 13, color: PAL.ink, fontWeight: 500, marginBottom: 14 }}>
+                    {d.beds && <span style={{ display: "flex", alignItems: "center", gap: 4 }}>🛏 {d.beds} Beds</span>}
+                    {d.baths && <span style={{ display: "flex", alignItems: "center", gap: 4 }}>🚿 {d.baths} Baths</span>}
+                    {d.sqft && <span style={{ display: "flex", alignItems: "center", gap: 4 }}>📏 {d.sqft} sq.ft</span>}
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}>🏠 {d.propertyType}</span>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14, background: PAL.paper, padding: 10, borderRadius: 6, border: `1px solid ${PAL.paperBorder}` }}>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: PAL.muted, textTransform: "uppercase" }}>Est. Repairs</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: PAL.ink }}>{fmt(repairsNum)}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: PAL.muted, textTransform: "uppercase" }}>Est. Margin</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: PAL.emeraldDark }}>{fmt(margin)}</div>
+                    </div>
+                  </div>
+
+                  {d.description && <div style={{ fontSize: 13, color: PAL.muted, marginBottom: 14, lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{d.description}</div>}
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 14, borderTop: `1px solid ${PAL.paperBorder}` }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: isBuyerMatch ? PAL.emerald : PAL.muted }}>
+                      {isBuyerMatch ? "✓ Matches Buy Box" : `Posted by ${d.wholesalerName || "Unknown"}`}
+                    </div>
+                    
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {isAdmin && (
+                        <Btn onClick={() => toggleVerifyDeal(d.id, d.verified)} style={{ padding: "6px 12px", fontSize: 12, borderColor: d.verified ? PAL.brick : PAL.emerald, color: d.verified ? PAL.brick : PAL.emerald }}>
+                          {d.verified ? "Unverify" : "Verify"}
+                        </Btn>
+                      )}
+                      {revealedContact === d.id ? (
+                        <div style={{ fontSize: 13, fontWeight: 700, color: PAL.ink, background: PAL.paper, border: `1px solid ${PAL.paperBorder}`, padding: "6px 12px", borderRadius: 7 }}>
+                          {d.contact}
+                        </div>
+                      ) : (
+                        <Btn primary onClick={() => setRevealedContact(d.id)} style={{ padding: "8px 16px", fontSize: 12.5 }}>
+                          Contact
+                        </Btn>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}              <div key={d.id} style={{ background: "#fff", border: `1px solid ${PAL.paperBorder}`, borderRadius: 10, overflow: "hidden" }}>
                 
                 {/* Hero Image Section */}
                 <div style={{ height: 180, background: PAL.paper, position: "relative", borderBottom: `1px solid ${PAL.paperBorder}` }}>
