@@ -60,12 +60,20 @@ export default function Tool({ user, authLoading, userRole, profileData, deals, 
 
   const handleSignOut = () => signOut(auth);
 
-  const filteredDeals = deals.filter(d => {
+  // ... inside your Tool component ...
+
+  // Update this specific logic
+  const filteredDeals = (deals || []).filter(d => {
     if (!isAdmin && !d.verified) return false;
     if (filters.state && d.state.toLowerCase() !== filters.state.toLowerCase()) return false;
     if (filters.maxPrice && Number(d.price) > Number(filters.maxPrice)) return false;
     if (filters.propertyType !== "All" && d.propertyType !== filters.propertyType) return false;
     return true;
+  });
+
+  // ADD THIS: If deals are completely missing, show a loading state instead of crashing
+  if (!deals) {
+    return <div style={{ padding: 40, textAlign: "center", color: "#888" }}>Loading your dashboard...</div>;
   });
 
   const TabBtn = ({ id, label }) => (
