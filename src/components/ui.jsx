@@ -14,15 +14,14 @@ export const labelBase = {
 export function Seal({ size = 40, status = "pending", color }) {
   const c = color || (status === "verified" ? PAL.emerald : PAL.gold);
   return (
-    <svg width={size} height={size} viewBox="0 0 56 56" style={{ flexShrink: 0 }}>
-      <circle cx="28" cy="28" r="25" fill="none" stroke={c} strokeWidth="2" />
-      <circle cx="28" cy="28" r="19" fill="none" stroke={c} strokeWidth="1" strokeDasharray="2 3.2" />
+    <svg width={size} height={size} viewBox="0 0 32 32" style={{ flexShrink: 0 }}>
+      <circle cx="16" cy="16" r="16" fill={c} />
       {status === "verified" ? (
-        <path d="M17 28.5l7 7 15-15" fill="none" stroke={c} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M9.5 16.5l4 4 9-9" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
       ) : (
-        <g stroke={c} strokeWidth="2.4" strokeLinecap="round">
-          <line x1="28" y1="28" x2="28" y2="17" />
-          <line x1="28" y1="28" x2="35" y2="32" />
+        <g stroke="#fff" strokeWidth="2.2" strokeLinecap="round">
+          <line x1="16" y1="16" x2="16" y2="9" />
+          <line x1="16" y1="16" x2="21" y2="19" />
         </g>
       )}
     </svg>
