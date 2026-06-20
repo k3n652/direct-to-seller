@@ -24,14 +24,6 @@ export default function Tool({ user, authLoading, userRole, profileData, deals, 
   const [filters, setFilters] = useState({ state: "", maxPrice: "", propertyType: "All" });
   const [revealedContact, setRevealedContact] = useState(null);
 
-  // --- SAFETY FIX START ---
-  // If deals haven't loaded yet, return a simple loading message.
-  // This prevents the TypeError from "Screenshot 2026-06-19 9.13.14 PM.png"
-  if (!deals) {
-    return <div style={{ padding: "40px", textAlign: "center", color: PAL.muted }}>Loading dashboard...</div>;
-  }
-  // --- SAFETY FIX END ---
-
   useEffect(() => {
     if (tab === "browse") {
       localStorage.setItem("lastViewedDeals", Date.now().toString());
