@@ -30,12 +30,17 @@ export default function Tool({ user, authLoading, userRole, profileData, deals, 
     }
   }, [tab]);
 
+  // Stops the white screen crash
+  if (!deals) {
+    return <div style={{ padding: "40px", textAlign: "center", color: "#888", fontFamily: SANS }}>Loading dashboard...</div>;
+  }
+
   const submitDeal = async (e) => {
     e.preventDefault();
     if (!dealForm.wholesalerName || !dealForm.address || !dealForm.price || !dealForm.contractLink) return;
     await addDoc(collection(db, "deals"), { 
       ...dealForm, 
-      uid: user.uid, 
+      uid: user?.uid, 
       verified: false, 
       createdAt: serverTimestamp() 
     });
@@ -58,21 +63,21 @@ export default function Tool({ user, authLoading, userRole, profileData, deals, 
 
   const handleSignOut = () => signOut(auth);
 
-  // Change this logic in Tool.jsx
-const filteredDeals = (deals || []).filter(d => {
-  if (!d) return false; // Safety check for individual items
-  if (!isAdmin && !d.verified) return false;
-  if (filters.state && d.state?.toLowerCase() !== filters.state.toLowerCase()) return false;
-  if (filters.maxPrice && Number(d.price) > Number(filters.maxPrice)) return false;
-  if (filters.propertyType !== "All" && d.propertyType !== filters.propertyType) return false;
-  return true;
-});
+  // Filters deals safely. Allows admins to see all, and users to see verified OR their own unverified deals.
+  const filteredDeals = deals.filter(d => {
+    if (!d) return false;
+    if (!isAdmin && !d.verified && d.uid !== user?.uid) return false;
+    if (filters.state && d.state?.toLowerCase() !== filters.state.toLowerCase()) return false;
+    if (filters.maxPrice && Number(d.price) > Number(filters.maxPrice)) return false;
+    if (filters.propertyType !== "All" && d.propertyType !== filters.propertyType) return false;
+    return true;
+  });
 
   const TabBtn = ({ id, label }) => (
     <button onClick={() => setTab(id)} style={{
       padding: "10px 18px", border: "none", background: "none", cursor: "pointer",
-      borderBottom: tab === id ? `2px solid ${PAL.emerald}` : "2px solid transparent",
-      color: tab === id ? PAL.emeraldDark : PAL.muted,
+      borderBottom: tab === id ? `2px solid ${PAL?.emerald || "#10b981"}` : "2px solid transparent",
+      color: tab === id ? (PAL?.emeraldDark || "#047857") : (PAL?.muted || "#6b7280"),
       fontWeight: 700, fontSize: 14, fontFamily: SANS, transition: "all 0.15s"
     }}>
       {label}
@@ -82,15 +87,14 @@ const filteredDeals = (deals || []).filter(d => {
   return (
     <div style={{ maxWidth: 800, margin: "0 auto", padding: "20px 14px", fontFamily: SANS }}>
       
-      {/* Top Navigation */}
-      <div style={{ display: "flex", gap: 4, borderBottom: `1px solid ${PAL.paperBorder}`, marginBottom: 28, overflowX: "auto", whiteSpace: "nowrap" }}>
+      <div style={{ display: "flex", gap: 4, borderBottom: `1px solid ${PAL?.paperBorder || "#e5e7eb"}`, marginBottom: 28, overflowX: "auto", whiteSpace: "nowrap" }}>
         <TabBtn id="browse" label={`Browse Deals (${filteredDeals.length})`} />
         <TabBtn id="post" label="Post a Deal" />
         
         <button onClick={() => setTab("buybox")} style={{
           padding: "10px 18px", border: "none", background: "none", cursor: "pointer",
-          borderBottom: tab === "buybox" ? `2px solid ${PAL.emerald}` : "2px solid transparent",
-          color: tab === "buybox" ? PAL.emeraldDark : PAL.muted,
+          borderBottom: tab === "buybox" ? `2px solid ${PAL?.emerald || "#10b981"}` : "2px solid transparent",
+          color: tab === "buybox" ? (PAL?.emeraldDark || "#047857") : (PAL?.muted || "#6b7280"),
           fontWeight: 700, fontSize: 14, fontFamily: SANS, transition: "all 0.15s",
           display: "flex", alignItems: "center", gap: 6
         }}>
@@ -98,10 +102,10 @@ const filteredDeals = (deals || []).filter(d => {
           {userRole === "buyer" && filteredDeals.some(d => {
             const lastViewed = Number(localStorage.getItem("lastViewedDeals") || 0);
             const isNew = d.createdAt?.toMillis() > lastViewed;
-            const matchesBox = myBuyBoxes.some(b => matchCount(d, [b]) > 0);
+            const matchesBox = (myBuyBoxes || []).some(b => matchCount(d, [b]) > 0);
             return isNew && matchesBox;
           }) && (
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: PAL.brick, display: "inline-block" }} />
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: PAL?.brick || "#ef4444", display: "inline-block" }} />
           )}
         </button>
         
@@ -109,10 +113,12 @@ const filteredDeals = (deals || []).filter(d => {
         {isAdmin && <TabBtn id="admin" label="🛡️ Admin" />}
       </div>
 
-      {/* Tab Content */}
-      {tab === "browse" && <BrowseTab filters={filters} setFilters={setFilters} filteredDeals={filteredDeals} buyers={buyers} myBuyBoxes={myBuyBoxes} userRole={userRole} isAdmin={isAdmin} toggleVerifyDeal={toggleVerifyDeal} revealedContact={revealedContact} setRevealedContact={setRevealedContact} />}
+      {tab === "browse" && <BrowseTab filters={filters} setFilters={setFilters} filteredDeals={filteredDeals} buyers={buyers || []} myBuyBoxes={myBuyBoxes || []} userRole={userRole} isAdmin={isAdmin} toggleVerifyDeal={toggleVerifyDeal} revealedContact={revealedContact} setRevealedContact={setRevealedContact} />}
       {tab === "post" && <PostTab dealForm={dealForm} setDealForm={setDealForm} submitDeal={submitDeal} posted={posted} />}
-      {tab === "buybox" && <BuyBoxTab />} 
+      
+      {/* Props passed down so the tab works */}
+      {tab === "buybox" && <BuyBoxTab deals={deals} myBuyBoxes={myBuyBoxes || []} userRole={userRole} user={user} />} 
+      
       {tab === "profile" && <ProfileTab user={user} userRole={userRole} profileData={profileData} onUpdateProfile={handleUpdateProfile} onSendPasswordReset={handleSendPasswordReset} onSignOut={handleSignOut} />}
       {tab === "admin" && <AdminTab deals={deals} toggleVerifyDeal={toggleVerifyDeal} />}
     </div>
