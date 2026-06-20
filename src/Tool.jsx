@@ -3,7 +3,6 @@ import { auth, db } from "./firebase";
 import { signOut, sendPasswordResetEmail } from "firebase/auth";
 import { collection, doc, updateDoc, addDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { PAL, SANS, matchCount } from "./theme";
-import { Gated } from "./components/Auth";
 import BrowseTab from "./components/BrowseTab";
 import PostTab from "./components/PostTab";
 import AdminTab from "./components/AdminTab";
@@ -25,7 +24,14 @@ export default function Tool({ user, authLoading, userRole, profileData, deals, 
   const [filters, setFilters] = useState({ state: "", maxPrice: "", propertyType: "All" });
   const [revealedContact, setRevealedContact] = useState(null);
 
-  // Track deals view for notifications
+  // --- SAFETY FIX START ---
+  // If deals haven't loaded yet, return a simple loading message.
+  // This prevents the TypeError from "Screenshot 2026-06-19 9.13.14 PM.png"
+  if (!deals) {
+    return <div style={{ padding: "40px", textAlign: "center", color: PAL.muted }}>Loading dashboard...</div>;
+  }
+  // --- SAFETY FIX END ---
+
   useEffect(() => {
     if (tab === "browse") {
       localStorage.setItem("lastViewedDeals", Date.now().toString());
@@ -60,20 +66,13 @@ export default function Tool({ user, authLoading, userRole, profileData, deals, 
 
   const handleSignOut = () => signOut(auth);
 
-  // ... inside your Tool component ...
-
-  // Update this specific logic
-  const filteredDeals = (deals || []).filter(d => {
+  // Now safe because we verified deals exists above
+  const filteredDeals = deals.filter(d => {
     if (!isAdmin && !d.verified) return false;
     if (filters.state && d.state.toLowerCase() !== filters.state.toLowerCase()) return false;
     if (filters.maxPrice && Number(d.price) > Number(filters.maxPrice)) return false;
     if (filters.propertyType !== "All" && d.propertyType !== filters.propertyType) return false;
     return true;
-  });
-
-  // ADD THIS: If deals are completely missing, show a loading state instead of crashing
-  if (!deals) {
-    return <div style={{ padding: 40, textAlign: "center", color: "#888" }}>Loading your dashboard...</div>;
   });
 
   const TabBtn = ({ id, label }) => (
@@ -95,7 +94,6 @@ export default function Tool({ user, authLoading, userRole, profileData, deals, 
         <TabBtn id="browse" label={`Browse Deals (${filteredDeals.length})`} />
         <TabBtn id="post" label="Post a Deal" />
         
-        {/* Buy Box with Notification Dot */}
         <button onClick={() => setTab("buybox")} style={{
           padding: "10px 18px", border: "none", background: "none", cursor: "pointer",
           borderBottom: tab === "buybox" ? `2px solid ${PAL.emerald}` : "2px solid transparent",
