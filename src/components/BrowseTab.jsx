@@ -86,7 +86,7 @@ export default function BrowseTab({
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ fontSize: 12, color: PAL.emeraldDark, fontWeight: 700 }}>
                       {userRole === "buyer"
-                        ? (isBuyerMatch ? "✨ Matches your Buy Box" : "Posted " + d.postedDate)
+                        ? (isBuyerMatch ? "Matches your Buy Box" : "Posted " + d.postedDate)
                         : userRole === "wholesaler"
                           ? (matches > 0 ? `${matches} buyer${matches > 1 ? "s" : ""} in your network match this` : "Posted " + d.postedDate)
                           : "Posted " + d.postedDate}
