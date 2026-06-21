@@ -1,58 +1,86 @@
-import React, { useState } from "react";
-import { PAL, SERIF } from "../theme";
+import { useState } from "react";
+import { PAL, SANS } from "../theme";
 import { Field, Btn } from "./ui";
 
-export default function ProfileTab({ user, userRole, profileData, onUpdateProfile, onSendPasswordReset, onSignOut }) {
-  const [name, setName] = useState(profileData?.name || "");
-  const [contact, setContact] = useState(profileData?.contact || "");
-  const [saving, setSaving] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
+export default function ProfileTab({ user, userRole, onLogout, onChangeEmail, onResetPassword }) {
+  const [newEmail, setNewEmail] = useState("");
+  const [emailMsg, setEmailMsg] = useState(null);
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [resetMsg, setResetMsg] = useState(null);
+  const [resetSending, setResetSending] = useState(false);
 
-  const handleSave = async () => {
-    setSaving(true);
-    await onUpdateProfile({ name, contact });
-    setSaving(false);
+  const submitEmailChange = async () => {
+    if (!newEmail) return;
+    setEmailSaving(true);
+    setEmailMsg(null);
+    const result = await onChangeEmail(newEmail);
+    setEmailMsg(result);
+    if (result.ok) setNewEmail("");
+    setEmailSaving(false);
   };
 
-  const handleReset = async () => {
-    await onSendPasswordReset(user.email);
-    setResetSent(true);
+  const submitReset = async () => {
+    setResetSending(true);
+    setResetMsg(null);
+    const result = await onResetPassword();
+    setResetMsg(result);
+    setResetSending(false);
   };
+
+  const sectionStyle = { background: PAL.paper, border: `1px solid ${PAL.paperBorder}`, borderRadius: 12, padding: 18, marginBottom: 14 };
+  const labelStyle = { fontSize: 11, fontWeight: 700, color: PAL.muted, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 };
+  const msgStyle = (ok) => ({ fontSize: 12.5, fontWeight: 600, marginTop: 8, color: ok ? PAL.emerald : PAL.brick });
 
   return (
-    <div style={{ maxWidth: 540, margin: "0 auto" }}>
-      
-      {/* Public Profile Settings */}
-      <div style={{ background: "#fff", border: `1px solid ${PAL.paperBorder}`, borderRadius: 10, padding: 24, marginBottom: 20 }}>
-        <h3 style={{ fontFamily: SERIF, marginTop: 0, marginBottom: 16 }}>Public Profile</h3>
-        <div style={{ display: "grid", gap: 14 }}>
-          <Field label="Display Name / Company" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Smith Investments" />
-          <Field label="Default Contact Info" value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Phone or Email" />
-          <Btn primary onClick={handleSave} disabled={saving || (!name && !contact)} style={{ width: "fit-content", padding: "8px 16px" }}>
-            {saving ? "Saving..." : "Save Changes"}
+    <div>
+      {/* Account overview */}
+      <div style={sectionStyle}>
+        <div style={labelStyle}>Account</div>
+        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>{user.email || "Google Account"}</div>
+        <div style={{ display: "inline-block", background: PAL.emeraldTint, color: PAL.emerald, fontSize: 11.5, fontWeight: 700, padding: "3px 10px", borderRadius: 20, textTransform: "capitalize" }}>
+          {userRole || "No role set"}
+        </div>
+      </div>
+
+      {/* Change email */}
+      <div style={sectionStyle}>
+        <div style={labelStyle}>Change Email</div>
+        <div style={{ color: PAL.muted, fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
+          Update the email address tied to your account.
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+          <div style={{ flex: 1 }}>
+            <Field label="New Email Address" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="newemail@domain.com" />
+          </div>
+          <Btn primary disabled={!newEmail || emailSaving} onClick={submitEmailChange} style={{ padding: "10px 18px" }}>
+            {emailSaving ? "Saving…" : "Update"}
           </Btn>
         </div>
+        {emailMsg && <div style={msgStyle(emailMsg.ok)}>{emailMsg.message}</div>}
       </div>
 
-      {/* Account & Security */}
-      <div style={{ background: "#fff", border: `1px solid ${PAL.paperBorder}`, borderRadius: 10, padding: 24, marginBottom: 20 }}>
-        <h3 style={{ fontFamily: SERIF, marginTop: 0, marginBottom: 16 }}>Account & Security</h3>
-        <div style={{ fontSize: 13, color: PAL.ink, marginBottom: 16, lineHeight: 1.5 }}>
-          <div style={{ marginBottom: 4 }}><strong>Email:</strong> {user?.email}</div>
-          <div><strong>Role:</strong> <span style={{ textTransform: "capitalize", color: PAL.emerald, fontWeight: 700 }}>{userRole}</span></div>
+      {/* Reset password */}
+      <div style={sectionStyle}>
+        <div style={labelStyle}>Password</div>
+        <div style={{ color: PAL.muted, fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
+          We'll email you a secure link to set a new password.
         </div>
-        <Btn onClick={handleReset} disabled={resetSent} style={{ fontSize: 12.5 }}>
-          {resetSent ? "✓ Reset Link Sent to Email" : "Send Password Reset Email"}
+        <Btn disabled={resetSending} onClick={submitReset} style={{ border: `1px solid ${PAL.paperBorder}` }}>
+          {resetSending ? "Sending…" : "Send Password Reset Email"}
         </Btn>
+        {resetMsg && <div style={msgStyle(resetMsg.ok)}>{resetMsg.message}</div>}
       </div>
 
-      {/* Danger Zone */}
-      <div style={{ background: "#fff", border: `1px solid ${PAL.paperBorder}`, borderRadius: 10, padding: 24 }}>
-        <Btn onClick={onSignOut} style={{ width: "100%", color: PAL.brick, borderColor: `${PAL.brick}55` }}>
-          Sign Out
+      {/* Log out */}
+      <div style={sectionStyle}>
+        <div style={labelStyle}>Session</div>
+        <div style={{ color: PAL.muted, fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
+          Sign out of DirectToSeller on this device.
+        </div>
+        <Btn onClick={onLogout} style={{ background: PAL.brick, color: "#fff", border: "none" }}>
+          Log Out
         </Btn>
       </div>
-
     </div>
   );
 }
