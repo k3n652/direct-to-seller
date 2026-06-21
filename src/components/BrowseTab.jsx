@@ -62,6 +62,14 @@ export default function BrowseTab({
                   </div>
                   <div style={{ fontWeight: 700, fontSize: 15.5, marginBottom: 2 }}>{d.address}</div>
                   <div style={{ color: PAL.muted, fontSize: 12.5, marginBottom: 4 }}>{[d.city, d.state, d.zip].filter(Boolean).join(", ")} · {d.propertyType}</div>
+                  {(d.beds || d.baths || d.sqft || d.lotSize) && (
+                    <div style={{ color: PAL.ink, fontSize: 12.5, fontWeight: 600, marginBottom: 4, display: "flex", gap: 10 }}>
+                      {d.beds && <span>🛏 {d.beds} Beds</span>}
+                      {d.baths && <span>🛁 {d.baths} Baths</span>}
+                      {d.sqft && <span>📐 {Number(d.sqft).toLocaleString()} sq.ft</span>}
+                      {d.lotSize && <span>🌳 {d.lotSize}</span>}
+                    </div>
+                  )}
                   <div style={{ color: PAL.emeraldDark, fontSize: 12, fontWeight: 600, marginBottom: 12 }}>Posted by {d.wholesalerName || "Unknown"}</div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
@@ -79,7 +87,9 @@ export default function BrowseTab({
                     <div style={{ fontSize: 12, color: PAL.emeraldDark, fontWeight: 700 }}>
                       {userRole === "buyer"
                         ? (isBuyerMatch ? "✨ Matches your Buy Box" : "Posted " + d.postedDate)
-                        : (matches > 0 ? `${matches} buyer${matches > 1 ? "s" : ""} in your network match this` : "Posted " + d.postedDate)}
+                        : userRole === "wholesaler"
+                          ? (matches > 0 ? `${matches} buyer${matches > 1 ? "s" : ""} in your network match this` : "Posted " + d.postedDate)
+                          : "Posted " + d.postedDate}
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
                       {isAdmin && (
