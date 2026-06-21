@@ -49,7 +49,7 @@ export default function BrowseTab({
                   </div>
                   {isBuyerMatch && (
                     <div style={{ position: "absolute", top: 10, left: 10, background: PAL.emerald, color: "#fff", fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 20 }}>
-                      ✨ Matches your Buy Box
+                      Matches your Buy Box
                     </div>
                   )}
                 </div>
