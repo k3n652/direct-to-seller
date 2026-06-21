@@ -18,6 +18,12 @@ export default function PostTab({ dealForm, setDealForm, submitDeal, posted }) {
           <Field label="Zip" value={dealForm.zip} onChange={setDF("zip")} placeholder="30309" />
         </div>
         <Select label="Property Type" value={dealForm.propertyType} onChange={setDF("propertyType")} options={PROPERTY_TYPES} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
+          <Field label="Beds" value={dealForm.beds} onChange={setDF("beds")} placeholder="3" />
+          <Field label="Baths" value={dealForm.baths} onChange={setDF("baths")} placeholder="2" />
+          <Field label="Sq. Ft." value={dealForm.sqft} onChange={setDF("sqft")} placeholder="1800" />
+          <Field label="Lot Size" value={dealForm.lotSize} onChange={setDF("lotSize")} placeholder="0.25 acres" />
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
           <Field label="Purchase Price" value={dealForm.price} onChange={setDF("price")} placeholder="100000" prefix="$" />
           <Field label="ARV" value={dealForm.arv} onChange={setDF("arv")} placeholder="200000" prefix="$" />
