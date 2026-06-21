@@ -6,19 +6,21 @@ import {
 import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   signInWithPopup, signOut, onAuthStateChanged,
+  sendPasswordResetEmail, updateEmail,
 } from "firebase/auth";
 
 import { db, auth, googleProvider } from "./firebase";
 import { PAL, SERIF, SANS, THIRTY_DAYS_MS } from "./theme";
 import { Seal } from "./components/ui";
 import { Gated } from "./components/Auth";
+import ProfileTab from "./components/ProfileTab";
 
 import BrowseTab from "./components/BrowseTab";
 import PostTab from "./components/PostTab";
 import BuyBoxTab from "./components/BuyBoxTab";
 import AdminTab from "./components/AdminTab";
 
-const EMPTY_DEAL = { wholesalerName: "", address: "", city: "", state: "", zip: "", price: "", arv: "", repairs: "", propertyType: "Single Family", description: "", contact: "", photoUrl: "", contractLink: "" };
+const EMPTY_DEAL = { wholesalerName: "", address: "", city: "", state: "", zip: "", price: "", arv: "", repairs: "", propertyType: "Single Family", description: "", contact: "", photoUrl: "", contractLink: "", beds: "", baths: "", sqft: "", lotSize: "" };
 const EMPTY_BUYER = { name: "", markets: "", maxPrice: "", propertyTypes: [], contact: "" };
 
 export default function App() {
@@ -155,6 +157,29 @@ export default function App() {
   };
 
   // Filter logic including the 30-day auto-hide feature
+  const handleChangeEmail = async (newEmail) => {
+    if (!user) return { ok: false, message: "Not signed in." };
+    try {
+      await updateEmail(user, newEmail);
+      return { ok: true, message: "Email updated." };
+    } catch (err) {
+      if (err.code === "auth/requires-recent-login") {
+        return { ok: false, message: "For security, log out and back in, then try again." };
+      }
+      return { ok: false, message: err.message.replace("Firebase: ", "") };
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!user?.email) return { ok: false, message: "No email on this account." };
+    try {
+      await sendPasswordResetEmail(auth, user.email);
+      return { ok: true, message: `Reset link sent to ${user.email}.` };
+    } catch (err) {
+      return { ok: false, message: err.message.replace("Firebase: ", "") };
+    }
+  };
+
   const filteredDeals = deals.filter((d) => {
     const notExpired = !d.createdAt || (Date.now() - d.createdAt < THIRTY_DAYS_MS);
     const stateOk = !filters.state || (d.state || "").toLowerCase().includes(filters.state.toLowerCase());
@@ -184,8 +209,11 @@ export default function App() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             {user && (
-              <button onClick={() => signOut(auth)} style={{ background: "none", border: "none", color: PAL.muted, fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}>
-                Sign Out ({user.email ? user.email.split("@")[0] : "User"})
+              <button onClick={() => signOut(auth)} style={{
+                background: PAL.emerald, border: "none", color: "#fff", fontSize: 12.5, fontWeight: 700,
+                cursor: "pointer", padding: "7px 14px", borderRadius: 8, fontFamily: SANS,
+              }}>
+                Log out
               </button>
             )}
             {!isAdmin && (
@@ -209,6 +237,7 @@ export default function App() {
           <TabBtn id="browse" label={`Browse Deals (${filteredDeals.length})`} />
           <TabBtn id="post" label="Post a Deal" />
           <TabBtn id="buybox" label="My Buy Box" />
+          {user && <TabBtn id="profile" label="Profile" />}
           {isAdmin && <TabBtn id="admin" label="🛡️ Admin Panel" />}
         </div>
 
@@ -248,6 +277,15 @@ export default function App() {
               submitBuyer={submitBuyer} profileSaved={profileSaved} buyers={myBuyBoxes}
             />
           </Gated>
+        )}
+
+        {tab === "profile" && user && (
+          <ProfileTab
+            user={user} userRole={userRole}
+            onLogout={() => signOut(auth)}
+            onChangeEmail={handleChangeEmail}
+            onResetPassword={handleResetPassword}
+          />
         )}
 
         {tab === "admin" && isAdmin && (
