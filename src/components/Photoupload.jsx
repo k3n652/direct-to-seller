@@ -5,7 +5,7 @@ import { Btn } from "./ui";
 // Fill these in from your Cloudinary dashboard:
 // 1. Cloud Name -> shown on your dashboard home page
 // 2. Upload preset -> Settings (gear icon) -> Upload -> Upload presets -> Add upload preset -> Signing Mode: Unsigned -> Save
-const CLOUDINARY_CLOUD_NAME = "doguuhrns";
+const CLOUDINARY_CLOUD_NAME = "@doguuhrns";
 const CLOUDINARY_UPLOAD_PRESET = "cloudman";
 
 export default function PhotoUpload({ value, onUploaded, label = "Upload a photo" }) {
