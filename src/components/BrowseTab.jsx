@@ -1,10 +1,14 @@
-import { PAL, fmt, PROPERTY_TYPES, matchCount } from "../theme";
+import { useState } from "react";
+import { PAL, fmt, PROPERTY_TYPES, matchingBuyers } from "../theme";
 import { Seal, Field, Select, Btn } from "./ui";
 
 export default function BrowseTab({
   filters, setFilters, loading, filteredDeals, buyers, myBuyBoxes, userRole,
   isAdmin, toggleVerifyDeal, revealedContact, setRevealedContact,
 }) {
+  const [expandedDealId, setExpandedDealId] = useState(null);
+  const [revealedBuyerId, setRevealedBuyerId] = useState(null);
+
   return (
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 24 }}>
@@ -23,8 +27,10 @@ export default function BrowseTab({
         <div style={{ display: "grid", gap: 14 }}>
           {filteredDeals.map((d) => {
             const margin = (Number(d.arv) || 0) - (Number(d.price) || 0) - (Number(d.repairs) || 0);
-            const matches = matchCount(d, buyers);
-            const isBuyerMatch = userRole === "buyer" && myBuyBoxes.some((b) => matchCount(d, [b]) > 0);
+            const matches = matchingBuyers(d, buyers);
+            const verifiedMatches = matches.filter((b) => b.verified);
+            const isBuyerMatch = userRole === "buyer" && myBuyBoxes.some((b) => matchingBuyers(d, [b]).length > 0);
+            const isExpanded = expandedDealId === d.id;
 
             return (
               <div key={d.id} style={{ background: "#fff", border: `1px solid ${PAL.paperBorder}`, borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }}>
@@ -49,7 +55,7 @@ export default function BrowseTab({
                   </div>
                   {isBuyerMatch && (
                     <div style={{ position: "absolute", top: 10, left: 10, background: PAL.emerald, color: "#fff", fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 20 }}>
-                      Matches your Buy Box
+                      ✨ Matches your Buy Box
                     </div>
                   )}
                 </div>
@@ -84,13 +90,26 @@ export default function BrowseTab({
                   {d.description && <div style={{ fontSize: 13.5, color: PAL.ink, marginBottom: 12, lineHeight: 1.5 }}>{d.description}</div>}
 
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ fontSize: 12, color: PAL.emeraldDark, fontWeight: 700 }}>
-                      {userRole === "buyer"
-                        ? (isBuyerMatch ? "Matches your Buy Box" : "Posted " + d.postedDate)
-                        : userRole === "wholesaler"
-                          ? (matches > 0 ? `${matches} buyer${matches > 1 ? "s" : ""} in your network match this` : "Posted " + d.postedDate)
+                    {userRole === "wholesaler" ? (
+                      matches.length > 0 ? (
+                        <button
+                          onClick={() => setExpandedDealId(isExpanded ? null : d.id)}
+                          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12, color: PAL.emeraldDark, fontWeight: 700, textDecoration: "underline" }}
+                        >
+                          {matches.length} buyer{matches.length > 1 ? "s" : ""} match this
+                          {verifiedMatches.length > 0 ? ` (${verifiedMatches.length} verified)` : ""}
+                          {isExpanded ? " ▲" : " ▼"}
+                        </button>
+                      ) : (
+                        <div style={{ fontSize: 12, color: PAL.emeraldDark, fontWeight: 700 }}>Posted {d.postedDate}</div>
+                      )
+                    ) : (
+                      <div style={{ fontSize: 12, color: PAL.emeraldDark, fontWeight: 700 }}>
+                        {userRole === "buyer"
+                          ? (isBuyerMatch ? "✨ Matches your Buy Box" : "Posted " + d.postedDate)
                           : "Posted " + d.postedDate}
-                    </div>
+                      </div>
+                    )}
                     <div style={{ display: "flex", gap: 8 }}>
                       {isAdmin && (
                         <Btn onClick={() => toggleVerifyDeal(d.id, d.verified)} style={{ borderColor: d.verified ? PAL.brick : PAL.emerald, color: d.verified ? PAL.brick : PAL.emerald }}>
@@ -108,6 +127,37 @@ export default function BrowseTab({
                       )}
                     </div>
                   </div>
+
+                  {/* Expanded matching-buyers list */}
+                  {isExpanded && matches.length > 0 && (
+                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${PAL.paperBorder}`, display: "grid", gap: 8 }}>
+                      {matches.map((b) => (
+                        <div key={b.id} style={{ background: PAL.paper, border: `1px solid ${PAL.paperBorder}`, borderRadius: 8, padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                              <span style={{ fontWeight: 700, fontSize: 13.5 }}>{b.name}</span>
+                              <span style={{ display: "flex", alignItems: "center", gap: 4, background: b.verified ? PAL.emeraldTint : PAL.goldTint, padding: "1px 7px", borderRadius: 20 }}>
+                                <Seal size={11} status={b.verified ? "verified" : "pending"} />
+                                <span style={{ fontSize: 9.5, fontWeight: 700, color: b.verified ? PAL.emerald : PAL.gold }}>
+                                  {b.verified ? "Verified" : "Pending"}
+                                </span>
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 11.5, color: PAL.muted }}>Max {fmt(b.maxPrice)}</div>
+                          </div>
+                          {revealedBuyerId === b.id ? (
+                            <div style={{ fontSize: 12.5, fontWeight: 700, color: PAL.ink, background: "#fff", border: `1px solid ${PAL.paperBorder}`, padding: "5px 10px", borderRadius: 7 }}>
+                              {b.contact}
+                            </div>
+                          ) : (
+                            <Btn primary onClick={() => setRevealedBuyerId(b.id)} style={{ padding: "6px 12px", fontSize: 11.5 }}>
+                              Contact Buyer
+                            </Btn>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             );
