@@ -38,7 +38,7 @@ function normalizeState(s) {
 // Buy box markets format: semicolon-separated entries, e.g. "Atlanta, GA; Dallas, TX; 30309"
 // A comma WITHIN one entry means "this city AND this state together" (not two separate criteria).
 // An entry with no comma is treated as a single flexible token (matches city, state, or zip).
-export function matchCount(deal, buyers) {
+export function matchingBuyers(deal, buyers) {
   const dealCity = (deal.city || "").toLowerCase().trim();
   const dealState = normalizeState(deal.state);
   const dealZip = (deal.zip || "").toLowerCase().trim();
@@ -60,5 +60,9 @@ export function matchCount(deal, buyers) {
     const priceOk = !b.maxPrice || Number(deal.price) <= Number(b.maxPrice);
     const typeOk = !b.propertyTypes || b.propertyTypes.length === 0 || b.propertyTypes.includes(deal.propertyType);
     return hit && priceOk && typeOk;
-  }).length;
+  });
+}
+
+export function matchCount(deal, buyers) {
+  return matchingBuyers(deal, buyers).length;
 }
