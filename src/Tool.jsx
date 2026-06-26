@@ -21,7 +21,7 @@ import BuyBoxTab from "./components/BuyBoxTab";
 import AdminTab from "./components/AdminTab";
 
 const EMPTY_DEAL = { wholesalerName: "", address: "", city: "", state: "", zip: "", price: "", arv: "", repairs: "", propertyType: "Single Family", description: "", contact: "", photoUrl: "", contractLink: "", beds: "", baths: "", sqft: "", lotSize: "" };
-const EMPTY_BUYER = { name: "", markets: "", maxPrice: "", propertyTypes: [], contact: "" };
+const EMPTY_BUYER = { name: "", markets: "", maxPrice: "", propertyTypes: [], contact: "", pofLink: "" };
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -108,9 +108,9 @@ export default function App() {
   };
 
   const submitBuyer = async () => {
-    if (!user || !buyerForm.name || !buyerForm.markets) return;
+    if (!user || !buyerForm.name || !buyerForm.markets || !buyerForm.pofLink) return;
     await addDoc(collection(db, "buyers"), {
-      ...buyerForm, userId: user.uid, postedDate: new Date().toLocaleDateString(), createdAt: Date.now(),
+      ...buyerForm, userId: user.uid, postedDate: new Date().toLocaleDateString(), verified: false, createdAt: Date.now(),
     });
     setBuyerForm(EMPTY_BUYER);
     setProfileSaved(true);
@@ -123,6 +123,10 @@ export default function App() {
 
   const toggleVerifyDeal = async (id, currentStatus) => {
     await updateDoc(doc(db, "deals", id), { verified: !currentStatus });
+  };
+
+  const toggleVerifyBuyer = async (id, currentStatus) => {
+    await updateDoc(doc(db, "buyers", id), { verified: !currentStatus });
   };
 
   const saveRole = async (role) => {
@@ -289,7 +293,7 @@ export default function App() {
         )}
 
         {tab === "admin" && isAdmin && (
-          <AdminTab deals={deals} toggleVerifyDeal={toggleVerifyDeal} />
+          <AdminTab deals={deals} toggleVerifyDeal={toggleVerifyDeal} buyers={buyers} toggleVerifyBuyer={toggleVerifyBuyer} />
         )}
 
       </div>
