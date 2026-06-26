@@ -1,10 +1,12 @@
 import { PAL, fmt, SANS } from "../theme";
-import { Field, Btn } from "./ui";
+import { Field, Btn, Seal } from "./ui";
+import PhotoUpload from "./PhotoUpload";
 
 const PROPERTY_TYPES = ["Single Family", "Multifamily", "Land", "Townhome/Condo", "Mixed Use"];
 
 export default function BuyBoxTab({ buyerForm, setBuyerForm, togglePropType, submitBuyer, profileSaved, buyers }) {
   const setBF = (k) => (e) => setBuyerForm((p) => ({ ...p, [k]: e.target.value }));
+  const canSave = buyerForm.name && buyerForm.markets && buyerForm.pofLink;
 
   return (
     <div>
@@ -29,8 +31,16 @@ export default function BuyBoxTab({ buyerForm, setBuyerForm, togglePropType, sub
           </div>
         </div>
         <Field label="Contact Info" value={buyerForm.contact} onChange={setBF("contact")} placeholder="Phone or email wholesalers can reach you at" />
+        <Field label="Proof of Funds Link" value={buyerForm.pofLink} onChange={setBF("pofLink")} placeholder="Link to a bank statement, POF letter, or lender pre-approval" />
+        <div style={{ color: PAL.muted, fontSize: 12, margin: "-6px 0 2px" }}>— or —</div>
+        <PhotoUpload value={buyerForm.pofLink} onUploaded={(url) => setBuyerForm((p) => ({ ...p, pofLink: url }))} label="Upload a screenshot instead" />
       </div>
-      <Btn primary disabled={!buyerForm.name || !buyerForm.markets} onClick={submitBuyer} style={{ width: "100%", padding: "13px 0" }}>
+
+      <div style={{ background: PAL.goldTint, border: `1px solid ${PAL.gold}33`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12.5, color: PAL.gold, fontWeight: 600 }}>
+        A proof of funds link or screenshot is required to save your buy box. Wholesalers can see verified buyers are real before reaching out.
+      </div>
+
+      <Btn primary disabled={!canSave} onClick={submitBuyer} style={{ width: "100%", padding: "13px 0" }}>
         {profileSaved ? "✓ Buy Box Saved" : "Save Buy Box"}
       </Btn>
 
@@ -41,7 +51,15 @@ export default function BuyBoxTab({ buyerForm, setBuyerForm, togglePropType, sub
           </div>
           {buyers.map((b) => (
             <div key={b.id} style={{ background: PAL.paper, border: `1px solid ${PAL.paperBorder}`, borderRadius: 8, padding: 14, marginBottom: 10 }}>
-              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{b.name}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>{b.name}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, background: b.verified ? PAL.emeraldTint : PAL.goldTint, padding: "3px 9px", borderRadius: 20 }}>
+                  <Seal size={14} status={b.verified ? "verified" : "pending"} />
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: b.verified ? PAL.emerald : PAL.gold }}>
+                    {b.verified ? "Verified" : "Pending Review"}
+                  </span>
+                </div>
+              </div>
               <div style={{ fontSize: 13, color: PAL.ink }}><strong>Markets:</strong> {b.markets}</div>
               <div style={{ fontSize: 13, color: PAL.ink }}><strong>Max Price:</strong> {fmt(b.maxPrice)}</div>
               <div style={{ fontSize: 13, color: PAL.ink }}><strong>Types:</strong> {b.propertyTypes?.join(", ") || "All"}</div>
