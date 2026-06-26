@@ -1,5 +1,6 @@
 import { PAL } from "../theme";
 import { Field, Select, Btn } from "./ui";
+import PhotoUpload from "./PhotoUpload";
 
 const PROPERTY_TYPES = ["Single Family", "Multifamily", "Land", "Townhome/Condo", "Mixed Use"];
 
@@ -29,7 +30,9 @@ export default function PostTab({ dealForm, setDealForm, submitDeal, posted }) {
           <Field label="ARV" value={dealForm.arv} onChange={setDF("arv")} placeholder="200000" prefix="$" />
           <Field label="Est. Repairs" value={dealForm.repairs} onChange={setDF("repairs")} placeholder="30000" prefix="$" />
         </div>
-        <Field label="Photo Link" value={dealForm.photoUrl} onChange={setDF("photoUrl")} placeholder="Link to a photo of the property (Imgur, Drive, etc.)" />
+        <Field label="Photo Link" value={dealForm.photoUrl} onChange={setDF("photoUrl")} placeholder="Paste a link to a photo of the property" />
+        <div style={{ color: PAL.muted, fontSize: 12, margin: "-6px 0 2px" }}>— or —</div>
+        <PhotoUpload value={dealForm.photoUrl} onUploaded={(url) => setDealForm((p) => ({ ...p, photoUrl: url }))} label="Upload a photo instead" />
         <Field label="Description" value={dealForm.description} onChange={setDF("description")} placeholder="Title status, condition, motivation, anything a buyer needs to know" textarea />
         <Field label="Your Contact Info" value={dealForm.contact} onChange={setDF("contact")} placeholder="Phone or email buyers can reach you at" />
         <Field label="Contract Link (required)" value={dealForm.contractLink} onChange={setDF("contractLink")} placeholder="Link to your signed purchase agreement, redacted is fine" />
