@@ -131,22 +131,17 @@ export default function Landing() {
         {/* CTA */}
         <div style={{ background: PAL.emerald, borderRadius: 14, padding: "32px 28px", textAlign: "center" }}>
           <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: "#fff", marginBottom: 8 }}>
-            Get early access
+            Ready to get started?
           </div>
           <div style={{ fontSize: 13.5, color: "#D7E6DF", marginBottom: 22, lineHeight: 1.5 }}>
-            We're letting in a small group of wholesalers and buyers first. Join the list to get in early.
+            DirectToSeller is live in early beta. Post a deal or set your buy box — free, no waitlist.
           </div>
-
-          <iframe
-            src="https://tally.so/r/5BODXd?"
-            width="100%"
-            height="220"
-            frameBorder="0"
-            marginHeight="0"
-            marginWidth="0"
-            title="Waitlist"
-            style={{ borderRadius: 8 }}
-          />
+          <a href="/app" style={{
+            display: "inline-block", textDecoration: "none", padding: "12px 28px", borderRadius: 8,
+            background: "#fff", color: PAL.emeraldDark, fontWeight: 700, fontSize: 14, fontFamily: SANS,
+          }}>
+            Launch App →
+          </a>
         </div>
 
         <div style={{ textAlign: "center", color: PAL.muted, fontSize: 12, marginTop: 28 }}>
