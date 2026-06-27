@@ -37,7 +37,7 @@ export default function BrowseTab({
 
                 {/* Photo */}
                 <div style={{
-                  position: "relative", width: "100%", height: 170,
+                  position: "relative", width: "100%", aspectRatio: "2 / 1",
                   backgroundColor: PAL.paper,
                   backgroundImage: d.photoUrl ? `url("${d.photoUrl}")` : "none",
                   backgroundSize: "cover", backgroundPosition: "center",
